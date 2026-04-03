@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "attach",
+      "name": "Attach to Backend",
+      "port": 9229,
+      "restart": true,
+      "localRoot": "${workspaceFolder}/apps/backend/src",
+      "remoteRoot": "${workspaceFolder}/apps/backend/src"
+    },
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Debug Frontend (Chrome)",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/frontend/src",
+      "sourceMapPathOverrides": {
+        "/@fs/*": "${workspaceFolder}/*"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug Full Stack",
+      "configurations": ["Attach to Backend", "Debug Frontend (Chrome)"]
+    }
+  ]
+}

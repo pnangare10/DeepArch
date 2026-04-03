@@ -1,0 +1,66 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  nodes       Node[]
+  edges       Edge[]
+}
+
+model Node {
+  id          String   @id @default(cuid())
+  projectId   String
+  parentId    String?
+  name        String
+  description String?
+  nodeType    String   @default("default")
+  positionX   Float
+  positionY   Float
+  width       Float?
+  height      Float?
+  metadata    String   @default("{\"customFields\":[],\"links\":[],\"tags\":[]}")
+  style       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project       Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent        Node?   @relation("NodeHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children      Node[]  @relation("NodeHierarchy")
+  outgoingEdges Edge[]  @relation("SourceNode")
+  incomingEdges Edge[]  @relation("TargetNode")
+
+  @@index([projectId, parentId])
+  @@index([projectId, name])
+}
+
+model Edge {
+  id           String   @id @default(cuid())
+  projectId    String
+  sourceId     String
+  targetId     String
+  parentId     String?
+  sourceHandle String?
+  targetHandle String?
+  label        String?
+  edgeType     String   @default("default")
+  metadata     String   @default("{}")
+  style        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  source  Node    @relation("SourceNode", fields: [sourceId], references: [id], onDelete: Cascade)
+  target  Node    @relation("TargetNode", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, parentId])
+}

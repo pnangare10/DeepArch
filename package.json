@@ -1,0 +1,20 @@
+{
+  "name": "deeparch",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interactive Multi-Level Architecture Visualization Platform",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev -w apps/backend\" \"npm run dev -w apps/frontend\"",
+    "debug": "concurrently -n backend,frontend -c blue,green \"npm run debug -w apps/backend\" \"npm run dev -w apps/frontend\"",
+    "build": "npm run build -w packages/shared && npm run build -w apps/backend && npm run build -w apps/frontend",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.0"
+  }
+}
