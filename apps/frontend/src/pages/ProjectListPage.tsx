@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Layers } from 'lucide-react';
+import { Plus, Layers, Upload } from 'lucide-react';
 import { projectsApi } from '../api/projects';
 import { ProjectCard } from '../components/project/ProjectCard';
 import type { Project } from '@deeparch/shared';
@@ -13,6 +13,8 @@ export function ProjectListPage() {
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     projectsApi.getAll().then((data) => {
@@ -30,6 +32,24 @@ export function ProjectListPage() {
     } catch (err) {
       console.error(err);
       setIsCreating(false);
+    }
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsImporting(true);
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const project = await projectsApi.importProject(data);
+      navigate(`/project/${project.id}`);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to import project. Make sure the file is a valid DeepArch export.');
+    } finally {
+      setIsImporting(false);
+      if (importInputRef.current) importInputRef.current.value = '';
     }
   };
 
@@ -51,13 +71,30 @@ export function ProjectListPage() {
             <Layers className="w-6 h-6 text-blue-600" />
             <span className="text-xl font-bold text-slate-800">DeepArch</span>
           </div>
-          <button
-            onClick={() => setShowNew(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            New Project
-          </button>
+          <div className="flex items-center gap-2">
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={handleImport}
+            />
+            <button
+              onClick={() => importInputRef.current?.click()}
+              disabled={isImporting}
+              className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
+            >
+              <Upload className="w-4 h-4" />
+              {isImporting ? 'Importing...' : 'Import'}
+            </button>
+            <button
+              onClick={() => setShowNew(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              New Project
+            </button>
+          </div>
         </div>
       </header>
 

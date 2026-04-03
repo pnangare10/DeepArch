@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { Layers, ArrowLeft, Save, Check, Loader2, AlertCircle } from 'lucide-react';
+import { Layers, ArrowLeft, Save, Check, Loader2, AlertCircle, Download } from 'lucide-react';
 import { BreadcrumbNav } from '../navigation/BreadcrumbNav';
 import { SearchBar } from '../navigation/SearchBar';
 import { useStore } from '../../store';
+import { projectsApi } from '../../api/projects';
 
 interface TopBarProps {
   projectId: string;
@@ -13,6 +14,10 @@ interface TopBarProps {
 export function TopBar({ projectId, projectName, onSave }: TopBarProps) {
   const navigate = useNavigate();
   const saveStatus = useStore((s) => s.saveStatus);
+
+  const handleExport = () => {
+    projectsApi.exportProject(projectId, projectName).catch(console.error);
+  };
 
   const SaveIcon = saveStatus === 'saving'
     ? Loader2
@@ -63,6 +68,16 @@ export function TopBar({ projectId, projectName, onSave }: TopBarProps) {
       <div className="flex-shrink-0">
         <SearchBar projectId={projectId} />
       </div>
+
+      {/* Export button */}
+      <button
+        onClick={handleExport}
+        title="Export project as JSON"
+        className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-slate-200 text-slate-500 hover:text-slate-800 transition-colors flex-shrink-0"
+      >
+        <Download className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline">Export</span>
+      </button>
 
       {/* Save button */}
       <button

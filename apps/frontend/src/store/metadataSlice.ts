@@ -81,9 +81,10 @@ export const createMetadataSlice: StateCreator<
     try {
       const updated = await nodesApi.update(projectId, nodeId, { metadata });
       set((state) => ({
-        nodes: state.nodes.map((n) =>
-          n.id === nodeId ? dbNodeToFlowNode(updated) : n,
-        ),
+        nodes: state.nodes.map((n) => {
+          if (n.id !== nodeId) return n;
+          return { ...n, data: { ...n.data, metadata: updated.metadata } };
+        }),
         selectedNode: state.selectedNodeId === nodeId ? updated : state.selectedNode,
       }));
     } catch (err) {
@@ -95,9 +96,19 @@ export const createMetadataSlice: StateCreator<
     try {
       const updated = await nodesApi.update(projectId, nodeId, data);
       set((state) => ({
-        nodes: state.nodes.map((n) =>
-          n.id === nodeId ? dbNodeToFlowNode(updated) : n,
-        ),
+        nodes: state.nodes.map((n) => {
+          if (n.id !== nodeId) return n;
+          // Merge only data fields — preserve React Flow internal props (measured, width, height, etc.)
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              name: updated.name,
+              description: updated.description,
+              nodeType: updated.nodeType,
+            },
+          };
+        }),
         selectedNode: state.selectedNodeId === nodeId ? updated : state.selectedNode,
       }));
     } catch (err) {

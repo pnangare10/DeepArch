@@ -5,6 +5,15 @@ import { PrismaProjectRepository } from '../repositories/prisma/PrismaProjectRep
 const router = Router();
 const service = new ProjectService(new PrismaProjectRepository());
 
+router.post('/import', async (req, res, next) => {
+  try {
+    const project = await service.importProject(req.body);
+    res.status(201).json(project);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/', async (_req, res, next) => {
   try {
     const projects = await service.getAll();
@@ -18,6 +27,16 @@ router.post('/', async (req, res, next) => {
   try {
     const project = await service.create(req.body);
     res.status(201).json(project);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/:projectId/export', async (req, res, next) => {
+  try {
+    const data = await service.exportProject(req.params.projectId);
+    res.setHeader('Content-Disposition', `attachment; filename="deeparch-export.json"`);
+    res.json(data);
   } catch (err) {
     next(err);
   }

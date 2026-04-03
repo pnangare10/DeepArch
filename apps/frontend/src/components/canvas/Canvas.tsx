@@ -16,8 +16,10 @@ import { useCallback, useEffect, useRef } from "react";
 import { useStore } from "../../store";
 import { ArchEdge } from "./ArchEdge";
 import { ArchNode } from "./ArchNode";
+import { AlignmentGuides } from "./AlignmentGuides";
 import { CanvasToolbar } from "./CanvasToolbar";
 import { ContextMenu } from "./ContextMenu";
+import { useAlignmentGuides } from "../../hooks/useAlignmentGuides";
 
 const nodeTypes = { archNode: ArchNode };
 const edgeTypes = { archEdge: ArchEdge };
@@ -38,26 +40,47 @@ function CanvasInner({ projectId }: CanvasProps) {
   const contextMenu = useStore((s) => s.contextMenu);
   const setContextMenu = useStore((s) => s.setContextMenu);
   const undo = useStore((s) => s.undo);
+  const copySelectedNodes = useStore((s) => s.copySelectedNodes);
+  const cutNode = useStore((s) => s.cutNode);
+  const pasteNodes = useStore((s) => s.pasteNodes);
 
   const { screenToFlowPosition } = useReactFlow();
   const entryExitConnections = useStore((s) => s.entryExitConnections);
+  const { guides, onNodeDrag, onNodeDragStop } = useAlignmentGuides(nodes);
 
-  // Global Ctrl+Z listener (fires even when canvas doesn't have keyboard focus)
+  // Global keyboard shortcuts (fire even when canvas doesn't have keyboard focus)
   const undoRef = useRef(undo);
   undoRef.current = undo;
+  const copyRef = useRef(copySelectedNodes);
+  copyRef.current = copySelectedNodes;
+  const cutRef = useRef(cutNode);
+  cutRef.current = cutNode;
+  const pasteRef = useRef(pasteNodes);
+  pasteRef.current = pasteNodes;
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
-        // Only fire if not inside an input/textarea
-        const tag = (e.target as HTMLElement).tagName;
-        if (tag === "INPUT" || tag === "TEXTAREA") return;
         e.preventDefault();
         undoRef.current();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "c") {
+        e.preventDefault();
+        copyRef.current();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "x") {
+        e.preventDefault();
+        // Cut the first selected node
+        const nodes = useStore.getState().nodes;
+        const selected = nodes.find((n) => n.selected);
+        if (selected) cutRef.current(projectId, selected.id);
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+        e.preventDefault();
+        pasteRef.current(projectId);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [projectId]);
   const entries = entryExitConnections.filter((c) => c.direction === "in");
   const exits = entryExitConnections.filter((c) => c.direction === "out");
 
@@ -183,12 +206,18 @@ function CanvasInner({ projectId }: CanvasProps) {
         fitViewOptions={{ padding: 0.2 }}
         deleteKeyCode="Delete"
         multiSelectionKeyCode="Shift"
+        selectionOnDrag
+        selectionMode="partial"
+        panOnDrag={[1, 2]}
+        onNodeDrag={onNodeDrag}
+        onNodeDragStop={onNodeDragStop}
         defaultEdgeOptions={{
           type: "archEdge",
           animated: false,
         }}
       >
         <Background gap={20} size={1} color="#e2e8f0" />
+        <AlignmentGuides guides={guides} />
         <Controls showInteractive={false} />
         <MiniMap
           nodeColor={(node) => {

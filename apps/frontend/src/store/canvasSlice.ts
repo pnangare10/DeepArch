@@ -20,12 +20,22 @@ interface HistorySnapshot {
   edges: FlowEdge[];
 }
 
+export interface ClipboardNode {
+  id: string;
+  name: string;
+  description: string | null;
+  nodeType: string;
+  positionX: number;
+  positionY: number;
+}
+
 export interface CanvasSlice {
   nodes: FlowNode[];
   edges: FlowEdge[];
   isLoading: boolean;
   saveStatus: SaveStatus;
   undoStack: HistorySnapshot[];
+  clipboard: ClipboardNode[] | null;
   loadLevel: (projectId: string, parentId: string | null) => Promise<void>;
   addNode: (projectId: string, data: CreateNodeDTO) => Promise<void>;
   updateNode: (projectId: string, nodeId: string, data: UpdateNodeDTO) => Promise<void>;
@@ -33,6 +43,12 @@ export interface CanvasSlice {
   addEdge: (projectId: string, connection: Connection) => Promise<void>;
   deleteEdge: (projectId: string, edgeId: string) => Promise<void>;
   updateEdgeLabel: (projectId: string, edgeId: string, label: string) => Promise<void>;
+  copySelectedNodes: () => void;
+  copyNodeById: (nodeId: string) => void;
+  cutNode: (projectId: string, nodeId: string) => Promise<void>;
+  pasteNodes: (projectId: string, offsetX?: number, offsetY?: number) => Promise<void>;
+  reparentNode: (projectId: string, nodeId: string, newParentId: string | null) => Promise<void>;
+  copyToLevel: (projectId: string, nodeId: string, newParentId: string | null) => Promise<void>;
   undo: () => void;
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
@@ -52,6 +68,7 @@ export const createCanvasSlice: StateCreator<
   isLoading: false,
   saveStatus: 'idle',
   undoStack: [],
+  clipboard: null,
   pendingPositionUpdates: new Map(),
 
   loadLevel: async (projectId, parentId) => {
@@ -158,9 +175,19 @@ export const createCanvasSlice: StateCreator<
     try {
       const updated = await nodesApi.update(projectId, nodeId, data);
       set((state) => ({
-        nodes: state.nodes.map((n) =>
-          n.id === nodeId ? dbNodeToFlowNode(updated) : n,
-        ),
+        nodes: state.nodes.map((n) => {
+          if (n.id !== nodeId) return n;
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              name: updated.name,
+              description: updated.description,
+              nodeType: updated.nodeType,
+              metadata: updated.metadata,
+            },
+          };
+        }),
       }));
     } catch (err) {
       console.error('Failed to update node:', err);
@@ -226,6 +253,122 @@ export const createCanvasSlice: StateCreator<
       }));
     } catch (err) {
       console.error('Failed to update edge label:', err);
+    }
+  },
+
+  copySelectedNodes: () => {
+    const selected = get().nodes.filter((n) => n.selected);
+    if (selected.length === 0) return;
+    set({
+      clipboard: selected.map((n) => ({
+        id: n.id,
+        name: n.data.name as string,
+        description: (n.data.description as string | null) ?? null,
+        nodeType: (n.data.nodeType as string) ?? 'default',
+        positionX: n.position.x,
+        positionY: n.position.y,
+      })),
+    });
+  },
+
+  copyNodeById: (nodeId) => {
+    const node = get().nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+    set({
+      clipboard: [{
+        id: node.id,
+        name: node.data.name as string,
+        description: (node.data.description as string | null) ?? null,
+        nodeType: (node.data.nodeType as string) ?? 'default',
+        positionX: node.position.x,
+        positionY: node.position.y,
+      }],
+    });
+  },
+
+  cutNode: async (projectId, nodeId) => {
+    const node = get().nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+    // Put in clipboard first, then delete
+    set({
+      clipboard: [{
+        id: node.id,
+        name: node.data.name as string,
+        description: (node.data.description as string | null) ?? null,
+        nodeType: (node.data.nodeType as string) ?? 'default',
+        positionX: node.position.x,
+        positionY: node.position.y,
+      }],
+    });
+    set((state) => ({
+      undoStack: [...state.undoStack.slice(-19), { nodes: state.nodes, edges: state.edges }],
+    }));
+    await nodesApi.delete(projectId, nodeId);
+    set((state) => ({
+      nodes: state.nodes.filter((n) => n.id !== nodeId),
+      edges: state.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
+    }));
+  },
+
+  copyToLevel: async (projectId, nodeId, newParentId) => {
+    const node = get().nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+    try {
+      await nodesApi.create(projectId, {
+        name: node.data.name as string,
+        description: (node.data.description as string | undefined),
+        nodeType: (node.data.nodeType as string) ?? 'default',
+        positionX: node.position.x,
+        positionY: node.position.y,
+        parentId: newParentId,
+      });
+      // Node is created at target level — no change to current canvas view
+    } catch (err) {
+      console.error('Failed to copy node to level:', err);
+    }
+  },
+
+  pasteNodes: async (projectId, offsetX = 40, offsetY = 40) => {
+    const { clipboard, currentParentId } = get();
+    if (!clipboard || clipboard.length === 0) return;
+    try {
+      const created = await Promise.all(
+        clipboard.map((n) =>
+          nodesApi.create(projectId, {
+            name: n.name,
+            description: n.description ?? undefined,
+            nodeType: n.nodeType,
+            positionX: n.positionX + offsetX,
+            positionY: n.positionY + offsetY,
+            parentId: currentParentId,
+          }),
+        ),
+      );
+      set((state) => ({
+        undoStack: [...state.undoStack.slice(-19), { nodes: state.nodes, edges: state.edges }],
+        nodes: [...state.nodes, ...created.map(dbNodeToFlowNode)],
+        // Shift clipboard positions so repeated pastes cascade
+        clipboard: state.clipboard!.map((n) => ({
+          ...n,
+          positionX: n.positionX + offsetX,
+          positionY: n.positionY + offsetY,
+        })),
+      }));
+    } catch (err) {
+      console.error('Failed to paste nodes:', err);
+    }
+  },
+
+  reparentNode: async (projectId, nodeId, newParentId) => {
+    try {
+      await nodesApi.update(projectId, nodeId, { parentId: newParentId });
+      // Remove node and any edges connected to it from the current level view
+      set((state) => ({
+        nodes: state.nodes.filter((n) => n.id !== nodeId),
+        edges: state.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
+      }));
+    } catch (err) {
+      console.error('Failed to reparent node:', err);
     }
   },
 
