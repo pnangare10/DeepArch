@@ -9,6 +9,22 @@ export type {
 export type { ArchEdge, CreateEdgeDTO, UpdateEdgeDTO } from './types/edge.js';
 export type { BreadcrumbItem, SearchResult } from './types/search.js';
 export type { User, LoginDTO, RegisterDTO, AuthResponse } from './types/auth.js';
+export type {
+  ProjectRole,
+  ProjectMember,
+  InviteMemberDTO,
+  UpdateMemberDTO,
+  Comment,
+  CreateCommentDTO,
+  UpdateCommentDTO,
+  CursorEvent,
+} from './types/collaboration.js';
+export {
+  PROJECT_ROLES,
+  ASSIGNABLE_ROLES,
+  ROLE_HIERARCHY,
+  ROLE_LABELS,
+} from './types/collaboration.js';
 
 export {
   NODE_TYPES,

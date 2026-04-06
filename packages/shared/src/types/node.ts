@@ -2,6 +2,9 @@ export interface NodeMetadata {
   customFields: { key: string; value: string }[];
   links: { label: string; url: string }[];
   tags: string[];
+  // Role-based drill-in access control (owner sets these)
+  accessInclude?: string[]; // if non-empty, only these roles can drill in
+  accessExclude?: string[]; // if non-empty, these roles are blocked
 }
 
 export interface ArchNode {

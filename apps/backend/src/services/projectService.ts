@@ -1,6 +1,7 @@
 import type { IProjectRepository, ProjectExport } from '../repositories/interfaces/IProjectRepository.js';
 import type { Project, CreateProjectDTO, UpdateProjectDTO } from '@deeparch/shared';
 import { AppError } from '../middleware/errorHandler.js';
+import { getMemberRole } from './memberService.js';
 
 export class ProjectService {
   constructor(private repo: IProjectRepository) {}
@@ -12,7 +13,8 @@ export class ProjectService {
   async getById(id: string, userId: string): Promise<Project> {
     const project = await this.repo.findById(id);
     if (!project) throw new AppError(404, 'Project not found');
-    if (project.userId !== userId) throw new AppError(403, 'Forbidden');
+    const role = await getMemberRole(id, userId);
+    if (!role) throw new AppError(403, 'Forbidden');
     return project;
   }
 
@@ -27,7 +29,9 @@ export class ProjectService {
   }
 
   async delete(id: string, userId: string): Promise<void> {
-    await this.getById(id, userId);
+    const project = await this.repo.findById(id);
+    if (!project) throw new AppError(404, 'Project not found');
+    if (project.userId !== userId) throw new AppError(403, 'Only the project owner can delete this project');
     await this.repo.delete(id);
   }
 

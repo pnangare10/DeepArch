@@ -1,0 +1,49 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"c:/Users/prane_ii3rizl/Downloads/Pranesh Projects\" log --oneline -5)",
+      "Bash(npm run lint)",
+      "Bash(npm run format)",
+      "Bash(npm run test:*)",
+      "Bash(npm run build)",
+      "Bash(npm install)",
+      "Bash(npx tsc)",
+      "Bash(npx prisma generate)",
+      "Bash(npx prisma migrate dev)",
+      "Bash(git status)",
+      "Bash(git diff)",
+      "Bash(git show)",
+      "Bash(git log)",
+      "Bash(git checkout *)",
+      "Bash(git pull)",
+      "Bash(git add *)",
+      "Bash(git commit -m *)",
+      "Bash(node *)",
+      "Bash(pnpm *)",
+      "Bash(yarn *)",
+      "Read(*)",
+      "Write(*)",
+      "grep -r *",
+      "find *",
+      "ls *",
+      "cat *",
+      "echo *",
+      "find *"
+    ],
+    "deny": [
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(chmod 777 *)",
+      "Bash(chown *)",
+      "Bash(dd *)",
+      "Bash(mkfs *)",
+      "Bash(> /dev/*)",
+      "Read(/etc/passwd)",
+      "Read(~/.ssh/*)",
+      "Read(.env)",
+      "Read(.env.*)"
+    ]
+  }
+}

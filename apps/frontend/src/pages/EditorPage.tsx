@@ -11,16 +11,23 @@ import type { Project } from '@deeparch/shared';
 
 function EditorInner({ project }: { project: Project }) {
   const setProjectId = useStore((s) => s.setProjectId);
+  const setProjectRole = useStore((s) => s.setProjectRole);
   const loadLevel = useStore((s) => s.loadLevel);
   const resetNavigation = useStore((s) => s.resetNavigation);
+  const connectToProject = useStore((s) => s.connectToProject);
+  const disconnectFromProject = useStore((s) => s.disconnectFromProject);
+  const token = useStore((s) => s.token);
 
   useEffect(() => {
     setProjectId(project.id);
+    setProjectRole(project.role ?? null); // null means owner
     resetNavigation();
     loadLevel(project.id, null);
+    if (token) connectToProject(project.id, token);
     return () => {
-      // Reset on unmount
+      disconnectFromProject();
       setProjectId('');
+      setProjectRole(null);
     };
   }, [project.id]);
 

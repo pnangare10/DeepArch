@@ -5,6 +5,7 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   nodeCount?: number;
+  role?: string; // membership role when returned for a non-owner member
 }
 
 export interface CreateProjectDTO {

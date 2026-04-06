@@ -4,6 +4,7 @@ import {
   Controls,
   MiniMap,
   ReactFlow,
+  SelectionMode,
   useReactFlow,
   type Connection,
   type EdgeMouseHandler,
@@ -14,12 +15,14 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useRef } from "react";
 import { useStore } from "../../store";
+import { useToast } from "../ui/Toast";
 import { ArchEdge } from "./ArchEdge";
 import { ArchNode } from "./ArchNode";
 import { PortNode } from "./PortNode";
 import { AlignmentGuides } from "./AlignmentGuides";
 import { CanvasToolbar } from "./CanvasToolbar";
 import { ContextMenu } from "./ContextMenu";
+import { RemoteCursors } from "./RemoteCursor";
 import { useAlignmentGuides } from "../../hooks/useAlignmentGuides";
 
 const nodeTypes = { archNode: ArchNode, portNode: PortNode };
@@ -30,6 +33,7 @@ interface CanvasProps {
 }
 
 function CanvasInner({ projectId }: CanvasProps) {
+  const toast = useToast();
   const nodes = useStore((s) => s.nodes);
   const edges = useStore((s) => s.edges);
   const isLoading = useStore((s) => s.isLoading);
@@ -46,6 +50,7 @@ function CanvasInner({ projectId }: CanvasProps) {
   const copySelectedNodes = useStore((s) => s.copySelectedNodes);
   const cutNode = useStore((s) => s.cutNode);
   const pasteNodes = useStore((s) => s.pasteNodes);
+  const emitCursorMove = useStore((s) => s.emitCursorMove);
 
   const { screenToFlowPosition } = useReactFlow();
   const { guides, onNodeDrag, onNodeDragStop } = useAlignmentGuides(nodes);
@@ -187,6 +192,16 @@ function CanvasInner({ projectId }: CanvasProps) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [projectId]);
+
+  // Listen for access-denied events from navigateInto (role-based node blocking)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const message = (e as CustomEvent<{ message: string }>).detail?.message ?? 'Access denied';
+      toast(message, 'warning');
+    };
+    window.addEventListener('deeparch:access-denied', handler);
+    return () => window.removeEventListener('deeparch:access-denied', handler);
+  }, [toast]);
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
       let conn = connection;
@@ -292,6 +307,14 @@ function CanvasInner({ projectId }: CanvasProps) {
     [setContextMenu, screenToFlowPosition],
   );
 
+  const onMouseMove = useCallback(
+    (event: React.MouseEvent) => {
+      const flowPos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      emitCursorMove(projectId, flowPos.x, flowPos.y);
+    },
+    [projectId, emitCursorMove, screenToFlowPosition],
+  );
+
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
       if (event.key === "Escape") setContextMenu(null);
@@ -312,7 +335,7 @@ function CanvasInner({ projectId }: CanvasProps) {
   }
 
   return (
-    <div className="flex-1 relative" onKeyDown={onKeyDown}>
+    <div className="flex-1 relative" onKeyDown={onKeyDown} onMouseMove={onMouseMove}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -334,7 +357,7 @@ function CanvasInner({ projectId }: CanvasProps) {
         deleteKeyCode="Delete"
         multiSelectionKeyCode="Shift"
         selectionOnDrag
-        selectionMode="partial"
+        selectionMode={SelectionMode.Partial}
         panOnDrag={[1, 2]}
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
@@ -366,6 +389,7 @@ function CanvasInner({ projectId }: CanvasProps) {
           className="!rounded-lg !border !border-slate-200"
         />
         <CanvasToolbar />
+        <RemoteCursors />
       </ReactFlow>
 
       {nodes.length === 0 && !isLoading && (

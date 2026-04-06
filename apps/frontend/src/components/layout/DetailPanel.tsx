@@ -3,10 +3,13 @@ import { useStore } from '../../store';
 import { NodeInfoSection } from '../metadata/NodeInfoSection';
 import { MetadataEditor } from '../metadata/MetadataEditor';
 import { LinksSection } from '../metadata/LinksSection';
+import { AccessControlSection } from '../metadata/AccessControlSection';
+import { CommentSection } from './CommentSection';
 
 export function DetailPanel() {
   const isDetailOpen = useStore((s) => s.isDetailOpen);
   const selectedNode = useStore((s) => s.selectedNode);
+  const projectId = useStore((s) => s.projectId);
   const closeDetail = useStore((s) => s.closeDetail);
 
   if (!isDetailOpen || !selectedNode) return null;
@@ -31,6 +34,14 @@ export function DetailPanel() {
         <MetadataEditor />
         <div className="border-t border-slate-100" />
         <LinksSection />
+        <div className="border-t border-slate-100" />
+        <AccessControlSection />
+        {projectId && (
+          <>
+            <div className="border-t border-slate-100" />
+            <CommentSection projectId={projectId} nodeId={selectedNode.id} />
+          </>
+        )}
       </div>
     </div>
   );

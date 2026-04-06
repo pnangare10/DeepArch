@@ -7,7 +7,7 @@ import type {
   Connection,
 } from '@xyflow/react';
 import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
-import type { CreateNodeDTO, UpdateNodeDTO } from '@deeparch/shared';
+import type { CreateNodeDTO, UpdateNodeDTO, ArchNode, ArchEdge } from '@deeparch/shared';
 import { nodesApi } from '../api/nodes';
 import { edgesApi } from '../api/edges';
 import { dbNodeToFlowNode, dbEdgeToFlowEdge } from '../lib/transforms';
@@ -152,6 +152,13 @@ export interface CanvasSlice {
   pendingPositionUpdates: Map<string, { x: number; y: number }>;
   clearPendingPositions: () => void;
   setSaveStatus: (status: SaveStatus) => void;
+  // Local-only mutations (used by WS event handlers — skip API calls)
+  addNodeLocal: (node: ArchNode) => void;
+  updateNodeLocal: (nodeId: string, data: Partial<ArchNode>) => void;
+  deleteNodeLocal: (nodeId: string) => void;
+  moveNodesLocal: (updates: { id: string; x: number; y: number }[]) => void;
+  addEdgeLocal: (edge: ArchEdge) => void;
+  deleteEdgeLocal: (edgeId: string) => void;
 }
 
 export const createCanvasSlice: StateCreator<
@@ -506,9 +513,60 @@ export const createCanvasSlice: StateCreator<
     set({ saveStatus: status });
   },
 
+  // ---- Local-only mutations for real-time collaboration ----
+
+  addNodeLocal: (node) => {
+    const flowNode = dbNodeToFlowNode(node);
+    set((state) => ({ nodes: [...state.nodes, flowNode] }));
+  },
+
+  updateNodeLocal: (nodeId, data) => {
+    set((state) => ({
+      nodes: state.nodes.map((n) => {
+        if (n.id !== nodeId) return n;
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            ...(data.name !== undefined && { name: data.name }),
+            ...(data.description !== undefined && { description: data.description }),
+            ...(data.nodeType !== undefined && { nodeType: data.nodeType }),
+            ...(data.metadata !== undefined && { metadata: data.metadata }),
+          },
+        };
+      }),
+    }));
+  },
+
+  deleteNodeLocal: (nodeId) => {
+    set((state) => ({
+      nodes: state.nodes.filter((n) => n.id !== nodeId),
+      edges: state.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
+    }));
+  },
+
+  moveNodesLocal: (updates) => {
+    const posMap = new Map(updates.map((u) => [u.id, { x: u.x, y: u.y }]));
+    set((state) => ({
+      nodes: state.nodes.map((n) => {
+        const pos = posMap.get(n.id);
+        return pos ? { ...n, position: pos } : n;
+      }),
+    }));
+  },
+
+  addEdgeLocal: (edge) => {
+    const flowEdge = dbEdgeToFlowEdge(edge);
+    set((state) => ({ edges: [...state.edges, flowEdge] }));
+  },
+
+  deleteEdgeLocal: (edgeId) => {
+    set((state) => ({ edges: state.edges.filter((e) => e.id !== edgeId) }));
+  },
+
   onNodesChange: (changes) => {
     // Intercept 'remove' changes to call the API (skip port nodes — they are virtual)
-    const removeChanges = changes.filter((c) => c.type === 'remove' && !isPortNode(c.id));
+    const removeChanges = changes.filter((c) => c.type === 'remove' && !isPortNode((c as { id: string }).id));
     if (removeChanges.length > 0) {
       const { projectId } = get();
       if (projectId) {
@@ -516,7 +574,7 @@ export const createCanvasSlice: StateCreator<
         const realNodes = state.nodes.filter((n) => !isPortNode(n.id));
         set({ undoStack: [...state.undoStack.slice(-19), { nodes: realNodes, edges: state.edges }] });
         for (const c of removeChanges) {
-          nodesApi.delete(projectId, c.id).catch((err) =>
+          nodesApi.delete(projectId, (c as { id: string }).id).catch((err) =>
             console.error('Failed to delete node:', err),
           );
         }
@@ -541,13 +599,13 @@ export const createCanvasSlice: StateCreator<
   onEdgesChange: (changes) => {
     // Intercept 'remove' changes to call the API (skip virtual port edges)
     const removeChanges = changes.filter(
-      (c) => c.type === 'remove' && !c.id.startsWith('__port_edge__'),
+      (c) => c.type === 'remove' && !(c as { id: string }).id.startsWith('__port_edge__'),
     );
     if (removeChanges.length > 0) {
       const { projectId } = get();
       if (projectId) {
         for (const c of removeChanges) {
-          edgesApi.delete(projectId, c.id).catch((err) =>
+          edgesApi.delete(projectId, (c as { id: string }).id).catch((err) =>
             console.error('Failed to delete edge:', err),
           );
         }

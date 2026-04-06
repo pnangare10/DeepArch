@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layers, ArrowLeft, Save, Check, Loader2, AlertCircle, Download } from 'lucide-react';
+import { Layers, ArrowLeft, Save, Check, Loader2, AlertCircle, Download, Users } from 'lucide-react';
 import { BreadcrumbNav } from '../navigation/BreadcrumbNav';
 import { SearchBar } from '../navigation/SearchBar';
+import { MemberBadges } from '../project/MemberBadges';
+import { ShareModal } from '../project/ShareModal';
 import { useStore } from '../../store';
 import { projectsApi } from '../../api/projects';
 
@@ -14,6 +17,7 @@ interface TopBarProps {
 export function TopBar({ projectId, projectName, onSave }: TopBarProps) {
   const navigate = useNavigate();
   const saveStatus = useStore((s) => s.saveStatus);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const handleExport = () => {
     projectsApi.exportProject(projectId, projectName).catch(console.error);
@@ -41,6 +45,7 @@ export function TopBar({ projectId, projectName, onSave }: TopBarProps) {
       : 'text-slate-500 hover:text-slate-800';
 
   return (
+    <>
     <header className="h-12 border-b border-slate-200 bg-white flex items-center px-3 gap-3 flex-shrink-0">
       {/* Back button */}
       <button
@@ -69,6 +74,19 @@ export function TopBar({ projectId, projectName, onSave }: TopBarProps) {
         <SearchBar projectId={projectId} />
       </div>
 
+      {/* Online member avatars */}
+      <MemberBadges />
+
+      {/* Share button */}
+      <button
+        onClick={() => setShareOpen(true)}
+        title="Share project"
+        className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-slate-200 text-slate-500 hover:text-slate-800 transition-colors flex-shrink-0"
+      >
+        <Users className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline">Share</span>
+      </button>
+
       {/* Export button */}
       <button
         onClick={handleExport}
@@ -90,5 +108,10 @@ export function TopBar({ projectId, projectName, onSave }: TopBarProps) {
         <span className="hidden sm:inline">{saveLabel}</span>
       </button>
     </header>
+
+    {shareOpen && (
+      <ShareModal projectId={projectId} onClose={() => setShareOpen(false)} />
+    )}
+  </>
   );
 }

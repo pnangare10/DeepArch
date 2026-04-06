@@ -125,7 +125,7 @@ export class PrismaNodeRepository implements INodeRepository {
     let currentId: string | null = nodeId;
 
     while (currentId) {
-      const node = await prisma.node.findUnique({
+      const node: { id: string; name: string; parentId: string | null } | null = await prisma.node.findUnique({
         where: { id: currentId },
         select: { id: true, name: true, parentId: true },
       });

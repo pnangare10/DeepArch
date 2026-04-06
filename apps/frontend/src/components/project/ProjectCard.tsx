@@ -1,5 +1,6 @@
 import { Trash2, Layers, Clock } from 'lucide-react';
 import type { Project } from '@deeparch/shared';
+import { ROLE_LABELS, type ProjectRole } from '@deeparch/shared';
 
 interface ProjectCardProps {
   project: Project;
@@ -28,20 +29,29 @@ export function ProjectCard({ project, onOpen, onDelete }: ProjectCardProps) {
     >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
-            {project.name}
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
+              {project.name}
+            </h3>
+            {project.role && (
+              <span className="flex-shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">
+                {ROLE_LABELS[project.role as ProjectRole] ?? project.role}
+              </span>
+            )}
+          </div>
           {project.description && (
             <p className="text-sm text-slate-500 mt-1 line-clamp-2">{project.description}</p>
           )}
         </div>
-        <button
-          onClick={handleDelete}
-          className="ml-3 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
-          title="Delete project"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        {!project.role && (
+          <button
+            onClick={handleDelete}
+            className="ml-3 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+            title="Delete project"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       <div className="mt-4 flex items-center gap-4 text-xs text-slate-400">

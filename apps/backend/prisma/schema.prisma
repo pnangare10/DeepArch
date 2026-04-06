@@ -15,6 +15,8 @@ model User {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   projects  Project[]
+  members   ProjectMember[]
+  comments  Comment[]
 }
 
 model Project {
@@ -27,7 +29,23 @@ model Project {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   nodes       Node[]
   edges       Edge[]
+  members     ProjectMember[]
+  comments    Comment[]
 
+  @@index([userId])
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  role      String   @default("developer")
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
   @@index([userId])
 }
 
@@ -47,14 +65,29 @@ model Node {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  project       Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  parent        Node?   @relation("NodeHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children      Node[]  @relation("NodeHierarchy")
-  outgoingEdges Edge[]  @relation("SourceNode")
-  incomingEdges Edge[]  @relation("TargetNode")
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent        Node?     @relation("NodeHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children      Node[]    @relation("NodeHierarchy")
+  outgoingEdges Edge[]    @relation("SourceNode")
+  incomingEdges Edge[]    @relation("TargetNode")
+  comments      Comment[]
 
   @@index([projectId, parentId])
   @@index([projectId, name])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  nodeId    String
+  projectId String
+  userId    String
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  node    Node    @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
 }
 
 model Edge {

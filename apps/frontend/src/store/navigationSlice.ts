@@ -1,6 +1,8 @@
 import type { StateCreator } from 'zustand';
 import type { BreadcrumbItem } from '@deeparch/shared';
 import type { StoreState } from './index';
+import { nodesApi } from '../api/nodes';
+import { ApiError } from '../api/client';
 
 // Which side of the parent node the external edge connected on
 export type PortSide = 'top' | 'bottom' | 'left' | 'right';
@@ -15,11 +17,13 @@ export interface EntryExitConnection {
 
 export interface NavigationSlice {
   projectId: string | null;
+  projectRole: string | null; // current user's role in this project (null = owner or not loaded)
   currentParentId: string | null;
   breadcrumbs: BreadcrumbItem[];
   entryExitConnections: EntryExitConnection[];
   setProjectId: (id: string) => void;
-  navigateInto: (nodeId: string, nodeName: string) => void;
+  setProjectRole: (role: string | null) => void;
+  navigateInto: (nodeId: string, nodeName: string) => Promise<void>;
   navigateToLevel: (index: number) => void;
   navigateUp: () => void;
   resetNavigation: () => void;
@@ -43,14 +47,33 @@ export const createNavigationSlice: StateCreator<
   NavigationSlice
 > = (set, get) => ({
   projectId: null,
+  projectRole: null,
   currentParentId: null,
   breadcrumbs: [{ id: null, name: 'Root' }],
   entryExitConnections: [],
 
   setProjectId: (id) => set({ projectId: id }),
+  setProjectRole: (role) => set({ projectRole: role }),
 
-  navigateInto: (nodeId, nodeName) => {
+  navigateInto: async (nodeId, nodeName) => {
     const { breadcrumbs, projectId, edges, nodes } = get();
+    if (!projectId) return;
+
+    // Access guard: call the single-node endpoint which returns 403 if role is blocked
+    try {
+      await nodesApi.getById(projectId, nodeId);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        // Parse the blocked roles from the error message for a friendlier toast
+        const msg = err.message || 'You do not have access to this block';
+        // Fire a custom event so Canvas/Toast can display it
+        window.dispatchEvent(new CustomEvent('deeparch:access-denied', { detail: { message: msg } }));
+        return;
+      }
+      // Other errors (network, etc.) — let them propagate silently
+      return;
+    }
+
     const newBreadcrumbs = [...breadcrumbs, { id: nodeId, name: nodeName }];
 
     // Build entry/exit connections from the current level's edges, including side info
@@ -83,7 +106,7 @@ export const createNavigationSlice: StateCreator<
     }
 
     set({ currentParentId: nodeId, breadcrumbs: newBreadcrumbs, entryExitConnections: connections });
-    if (projectId) get().loadLevel(projectId, nodeId);
+    get().loadLevel(projectId, nodeId);
   },
 
   navigateToLevel: (index) => {

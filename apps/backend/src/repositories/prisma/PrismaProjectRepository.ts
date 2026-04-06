@@ -4,12 +4,35 @@ import type { IProjectRepository, ProjectExport } from '../interfaces/IProjectRe
 
 export class PrismaProjectRepository implements IProjectRepository {
   async findByUserId(userId: string): Promise<Project[]> {
-    const projects = await prisma.project.findMany({
+    // Owned projects
+    const owned = await prisma.project.findMany({
       where: { userId },
       include: { _count: { select: { nodes: true } } },
       orderBy: { updatedAt: 'desc' },
     });
-    return projects.map((p) => ({
+
+    // Member projects (not owned)
+    const memberships = await prisma.projectMember.findMany({
+      where: { userId },
+      include: {
+        project: { include: { _count: { select: { nodes: true } } } },
+      },
+    });
+
+    const ownedSet = new Set(owned.map((p) => p.id));
+    const memberProjects = memberships
+      .filter((m) => !ownedSet.has(m.projectId))
+      .map((m) => ({
+        id: m.project.id,
+        name: m.project.name,
+        description: m.project.description,
+        createdAt: m.project.createdAt.toISOString(),
+        updatedAt: m.project.updatedAt.toISOString(),
+        nodeCount: m.project._count.nodes,
+        role: m.role,
+      }));
+
+    const ownedProjects = owned.map((p) => ({
       id: p.id,
       name: p.name,
       description: p.description,
@@ -17,6 +40,10 @@ export class PrismaProjectRepository implements IProjectRepository {
       updatedAt: p.updatedAt.toISOString(),
       nodeCount: p._count.nodes,
     }));
+
+    return [...ownedProjects, ...memberProjects].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
   }
 
   async findById(id: string): Promise<(Project & { userId: string }) | null> {

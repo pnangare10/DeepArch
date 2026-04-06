@@ -6,6 +6,8 @@ export const nodesApi = {
     api.get<ArchNode[]>(
       `/projects/${projectId}/nodes?parentId=${parentId ?? 'null'}`,
     ),
+  getById: (projectId: string, nodeId: string) =>
+    api.get<ArchNode>(`/projects/${projectId}/nodes/${nodeId}`),
   create: (projectId: string, data: CreateNodeDTO) =>
     api.post<ArchNode>(`/projects/${projectId}/nodes`, data),
   update: (projectId: string, nodeId: string, data: UpdateNodeDTO) =>
