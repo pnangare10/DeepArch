@@ -16,12 +16,13 @@ import { useCallback, useEffect, useRef } from "react";
 import { useStore } from "../../store";
 import { ArchEdge } from "./ArchEdge";
 import { ArchNode } from "./ArchNode";
+import { PortNode } from "./PortNode";
 import { AlignmentGuides } from "./AlignmentGuides";
 import { CanvasToolbar } from "./CanvasToolbar";
 import { ContextMenu } from "./ContextMenu";
 import { useAlignmentGuides } from "../../hooks/useAlignmentGuides";
 
-const nodeTypes = { archNode: ArchNode };
+const nodeTypes = { archNode: ArchNode, portNode: PortNode };
 const edgeTypes = { archEdge: ArchEdge };
 
 interface CanvasProps {
@@ -36,6 +37,8 @@ function CanvasInner({ projectId }: CanvasProps) {
   const onEdgesChange = useStore((s) => s.onEdgesChange);
   const addEdge = useStore((s) => s.addEdge);
   const navigateInto = useStore((s) => s.navigateInto);
+  const navigateUp = useStore((s) => s.navigateUp);
+  const breadcrumbs = useStore((s) => s.breadcrumbs);
   const selectNode = useStore((s) => s.selectNode);
   const contextMenu = useStore((s) => s.contextMenu);
   const setContextMenu = useStore((s) => s.setContextMenu);
@@ -45,7 +48,6 @@ function CanvasInner({ projectId }: CanvasProps) {
   const pasteNodes = useStore((s) => s.pasteNodes);
 
   const { screenToFlowPosition } = useReactFlow();
-  const entryExitConnections = useStore((s) => s.entryExitConnections);
   const { guides, onNodeDrag, onNodeDragStop } = useAlignmentGuides(nodes);
 
   // Global keyboard shortcuts (fire even when canvas doesn't have keyboard focus)
@@ -57,10 +59,117 @@ function CanvasInner({ projectId }: CanvasProps) {
   cutRef.current = cutNode;
   const pasteRef = useRef(pasteNodes);
   pasteRef.current = pasteNodes;
+  const navigateUpRef = useRef(navigateUp);
+  navigateUpRef.current = navigateUp;
+  const navigateIntoRef = useRef(navigateInto);
+  navigateIntoRef.current = navigateInto;
+  const selectNodeRef = useRef(selectNode);
+  selectNodeRef.current = selectNode;
+  const breadcrumbsRef = useRef(breadcrumbs);
+  breadcrumbsRef.current = breadcrumbs;
+
   useEffect(() => {
+    const MOVE_STEP = 40;
+
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      const inInput = tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement).isContentEditable;
+
+      // Tab always cycles nodes regardless of where focus is
+      if (e.key === "Tab" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        const realNodes = useStore.getState().nodes.filter((n) => !n.id.startsWith('__port__'));
+        if (realNodes.length === 0) return;
+        const currentIdx = realNodes.findIndex((n) => n.selected);
+        const nextIdx = (currentIdx + 1) % realNodes.length;
+        selectNodeRef.current(realNodes[nextIdx].id);
+        return;
+      }
+
+      // Esc closes the detail panel (works even when focused in panel inputs)
+      if (e.key === "Escape") {
+        useStore.getState().closeDetail();
+        selectNodeRef.current(null);
+        return;
+      }
+
+      // All remaining shortcuts ignore input fields
+      if (inInput) return;
+
+      const state = useStore.getState();
+      const realNodes = state.nodes.filter((n) => !n.id.startsWith('__port__'));
+      const selectedNode = realNodes.find((n) => n.selected);
+
+      // Enter → drill into selected node
+      if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
+        if (selectedNode) {
+          e.preventDefault();
+          navigateIntoRef.current(selectedNode.id, selectedNode.data?.name as string);
+        }
+        return;
+      }
+
+      // Backspace → navigate up (only when nothing selected)
+      if (e.key === "Backspace" && !e.ctrlKey && !e.metaKey) {
+        if (!selectedNode && breadcrumbsRef.current.length > 1) {
+          e.preventDefault();
+          navigateUpRef.current();
+        }
+        return;
+      }
+
+      // Arrow keys:
+      // Plain arrow → traverse to nearest node in that direction
+      // Shift+Arrow → move selected node by MOVE_STEP px
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+        e.preventDefault();
+
+        if (e.shiftKey && selectedNode) {
+          // Move the selected node
+          const dx = e.key === "ArrowLeft" ? -MOVE_STEP : e.key === "ArrowRight" ? MOVE_STEP : 0;
+          const dy = e.key === "ArrowUp" ? -MOVE_STEP : e.key === "ArrowDown" ? MOVE_STEP : 0;
+          state.onNodesChange([{
+            type: 'position',
+            id: selectedNode.id,
+            position: { x: selectedNode.position.x + dx, y: selectedNode.position.y + dy },
+          }]);
+        } else {
+          // Traverse to the nearest node in the arrow direction
+          if (realNodes.length === 0) return;
+          const origin = selectedNode ?? realNodes[0];
+          const ox = origin.position.x + (origin.width ?? 160) / 2;
+          const oy = origin.position.y + (origin.height ?? 60) / 2;
+
+          const candidates = realNodes.filter((n) => n.id !== origin.id).filter((n) => {
+            const nx = n.position.x + (n.width ?? 160) / 2;
+            const ny = n.position.y + (n.height ?? 60) / 2;
+            if (e.key === "ArrowRight") return nx > ox;
+            if (e.key === "ArrowLeft")  return nx < ox;
+            if (e.key === "ArrowDown")  return ny > oy;
+            if (e.key === "ArrowUp")    return ny < oy;
+            return false;
+          });
+
+          if (candidates.length === 0) return;
+
+          // Score by weighted distance — prioritise same-axis proximity
+          const best = candidates.reduce((prev, cur) => {
+            const score = (n: typeof origin) => {
+              const nx = n.position.x + (n.width ?? 160) / 2;
+              const ny = n.position.y + (n.height ?? 60) / 2;
+              const axial  = ["ArrowLeft", "ArrowRight"].includes(e.key) ? Math.abs(nx - ox) : Math.abs(ny - oy);
+              const lateral = ["ArrowLeft", "ArrowRight"].includes(e.key) ? Math.abs(ny - oy) : Math.abs(nx - ox);
+              return axial + lateral * 2;
+            };
+            return score(cur) < score(prev) ? cur : prev;
+          });
+
+          selectNodeRef.current(best.id);
+        }
+        return;
+      }
+
+      // Ctrl+Z undo
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         undoRef.current();
@@ -69,10 +178,7 @@ function CanvasInner({ projectId }: CanvasProps) {
         copyRef.current();
       } else if ((e.ctrlKey || e.metaKey) && e.key === "x") {
         e.preventDefault();
-        // Cut the first selected node
-        const nodes = useStore.getState().nodes;
-        const selected = nodes.find((n) => n.selected);
-        if (selected) cutRef.current(projectId, selected.id);
+        if (selectedNode) cutRef.current(projectId, selectedNode.id);
       } else if ((e.ctrlKey || e.metaKey) && e.key === "v") {
         e.preventDefault();
         pasteRef.current(projectId);
@@ -81,27 +187,45 @@ function CanvasInner({ projectId }: CanvasProps) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [projectId]);
-  const entries = entryExitConnections.filter((c) => c.direction === "in");
-  const exits = entryExitConnections.filter((c) => c.direction === "out");
-
   const onConnect: OnConnect = useCallback(
-    (connection: Connection) => addEdge(projectId, connection),
+    (connection: Connection) => {
+      let conn = connection;
+      // If the user dragged an arrow TO an INPUT port, flip it so it goes FROM the port instead
+      if (conn.target?.startsWith('__port__') && conn.targetHandle === 'port-source') {
+        conn = {
+          source: conn.target,
+          sourceHandle: 'port-source',
+          target: conn.source,
+          targetHandle: conn.sourceHandle,
+        };
+      }
+      // If the user dragged FROM an OUTPUT port, flip it so it points TO the port instead
+      if (conn.source?.startsWith('__port__') && conn.sourceHandle === 'port-target') {
+        conn = {
+          source: conn.target,
+          sourceHandle: conn.targetHandle,
+          target: conn.source,
+          targetHandle: 'port-target',
+        };
+      }
+      addEdge(projectId, conn);
+    },
     [projectId, addEdge],
   );
 
-  // Prevent self-connections and same-side connections (e.g. top→top).
-  // Handle IDs are like "top-src", "top-tgt", "left-src", "left-tgt", etc.
-  // Extract the side prefix to compare.
   const isValidConnection = useCallback((connection: Connection | FlowEdge) => {
     if (connection.source === connection.target) return false;
-    // Block same-side connections (e.g. top→top)
+    // Block same-side connections between regular nodes (e.g. top→top)
     if (connection.sourceHandle && connection.targetHandle &&
-        connection.sourceHandle === connection.targetHandle) return false;
+        connection.sourceHandle === connection.targetHandle &&
+        !connection.source?.startsWith('__port__') &&
+        !connection.target?.startsWith('__port__')) return false;
     return true;
   }, []);
 
   const onNodeDoubleClick: NodeMouseHandler = useCallback(
     (_event, node) => {
+      if (node.id.startsWith('__port__')) return;
       navigateInto(node.id, node.data?.name as string);
     },
     [navigateInto],
@@ -109,6 +233,7 @@ function CanvasInner({ projectId }: CanvasProps) {
 
   const onNodeClick: NodeMouseHandler = useCallback(
     (_event, node) => {
+      if (node.id.startsWith('__port__')) return;
       selectNode(node.id);
     },
     [selectNode],
@@ -122,6 +247,8 @@ function CanvasInner({ projectId }: CanvasProps) {
   const onNodeContextMenu: NodeMouseHandler = useCallback(
     (event, node) => {
       event.preventDefault();
+      // Port nodes are virtual — suppress context menu
+      if (node.id.startsWith('__port__')) return;
       setContextMenu({
         type: "node",
         id: node.id,
@@ -248,44 +375,6 @@ function CanvasInner({ projectId }: CanvasProps) {
             <p className="text-sm">
               Right-click to add a node, or use the + button
             </p>
-          </div>
-        </div>
-      )}
-
-      {/* Entry connections strip — top */}
-      {entries.length > 0 && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-          <div className="flex items-center gap-2 bg-white/90 border border-slate-200 rounded-full px-3 py-1 shadow-sm">
-            <span className="text-xs text-slate-400 font-medium">
-              Inputs from:
-            </span>
-            {entries.map((c) => (
-              <span
-                key={c.nodeId}
-                className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200"
-              >
-                ↓ {c.nodeName}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Exit connections strip — bottom */}
-      {exits.length > 0 && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-          <div className="flex items-center gap-2 bg-white/90 border border-slate-200 rounded-full px-3 py-1 shadow-sm">
-            <span className="text-xs text-slate-400 font-medium">
-              Outputs to:
-            </span>
-            {exits.map((c) => (
-              <span
-                key={c.nodeId}
-                className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200"
-              >
-                ↑ {c.nodeName}
-              </span>
-            ))}
           </div>
         </div>
       )}

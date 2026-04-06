@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Layers, Upload } from 'lucide-react';
+import { Plus, Layers, Upload, LogOut } from 'lucide-react';
 import { projectsApi } from '../api/projects';
 import { ProjectCard } from '../components/project/ProjectCard';
+import { useStore } from '../store';
+import { useToast } from '../components/ui/Toast';
 import type { Project } from '@deeparch/shared';
 
 export function ProjectListPage() {
   const navigate = useNavigate();
+  const user = useStore((s) => s.user);
+  const logout = useStore((s) => s.logout);
+  const toast = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
@@ -17,10 +22,15 @@ export function ProjectListPage() {
   const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    projectsApi.getAll().then((data) => {
-      setProjects(data);
-      setIsLoading(false);
-    });
+    projectsApi.getAll()
+      .then((data) => {
+        setProjects(data);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        toast(err instanceof Error ? err.message : 'Failed to load projects');
+        setIsLoading(false);
+      });
   }, []);
 
   const handleCreate = async () => {
@@ -30,7 +40,7 @@ export function ProjectListPage() {
       const project = await projectsApi.create({ name: newName.trim(), description: newDesc.trim() || undefined });
       navigate(`/project/${project.id}`);
     } catch (err) {
-      console.error(err);
+      toast(err instanceof Error ? err.message : 'Failed to create project');
       setIsCreating(false);
     }
   };
@@ -45,8 +55,7 @@ export function ProjectListPage() {
       const project = await projectsApi.importProject(data);
       navigate(`/project/${project.id}`);
     } catch (err) {
-      console.error(err);
-      alert('Failed to import project. Make sure the file is a valid DeepArch export.');
+      toast(err instanceof Error ? err.message : 'Failed to import project. Make sure the file is a valid DeepArch export.');
     } finally {
       setIsImporting(false);
       if (importInputRef.current) importInputRef.current.value = '';
@@ -58,7 +67,7 @@ export function ProjectListPage() {
       await projectsApi.delete(id);
       setProjects((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
-      console.error(err);
+      toast(err instanceof Error ? err.message : 'Failed to delete project');
     }
   };
 
@@ -71,7 +80,7 @@ export function ProjectListPage() {
             <Layers className="w-6 h-6 text-blue-600" />
             <span className="text-xl font-bold text-slate-800">DeepArch</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <input
               ref={importInputRef}
               type="file"
@@ -94,6 +103,18 @@ export function ProjectListPage() {
               <Plus className="w-4 h-4" />
               New Project
             </button>
+            {user && (
+              <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
+                <span className="text-sm text-slate-600">{user.name}</span>
+                <button
+                  onClick={() => { logout(); navigate('/login'); }}
+                  className="flex items-center gap-1 px-3 py-2 text-slate-500 hover:text-slate-800 text-sm rounded-lg hover:bg-slate-100 transition-colors"
+                  title="Sign out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>

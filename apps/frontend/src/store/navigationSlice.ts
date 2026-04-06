@@ -2,10 +2,15 @@ import type { StateCreator } from 'zustand';
 import type { BreadcrumbItem } from '@deeparch/shared';
 import type { StoreState } from './index';
 
+// Which side of the parent node the external edge connected on
+export type PortSide = 'top' | 'bottom' | 'left' | 'right';
+
 export interface EntryExitConnection {
   nodeId: string;
   nodeName: string;
   direction: 'in' | 'out';
+  // The handle used on the parent node for this connection (determines port placement)
+  side: PortSide;
 }
 
 export interface NavigationSlice {
@@ -18,6 +23,17 @@ export interface NavigationSlice {
   navigateToLevel: (index: number) => void;
   navigateUp: () => void;
   resetNavigation: () => void;
+}
+
+// Derive a PortSide from a handle string (e.g. "top", "bottom-src", null → default)
+function sideFromHandle(handle: string | null | undefined, fallback: PortSide): PortSide {
+  if (!handle) return fallback;
+  const lower = handle.toLowerCase();
+  if (lower.includes('top')) return 'top';
+  if (lower.includes('bottom')) return 'bottom';
+  if (lower.includes('left')) return 'left';
+  if (lower.includes('right')) return 'right';
+  return fallback;
 }
 
 export const createNavigationSlice: StateCreator<
@@ -37,21 +53,31 @@ export const createNavigationSlice: StateCreator<
     const { breadcrumbs, projectId, edges, nodes } = get();
     const newBreadcrumbs = [...breadcrumbs, { id: nodeId, name: nodeName }];
 
-    // Build entry/exit connections from the current level's edges
+    // Build entry/exit connections from the current level's edges, including side info
     const connections: EntryExitConnection[] = [];
     for (const edge of edges) {
       if (edge.target === nodeId) {
-        // Something flows INTO this node
+        // Something flows INTO this node — use the targetHandle to determine which side it arrives on
         const srcNode = nodes.find((n) => n.id === edge.source);
         if (srcNode) {
-          connections.push({ nodeId: edge.source, nodeName: srcNode.data?.name as string ?? edge.source, direction: 'in' });
+          connections.push({
+            nodeId: edge.source,
+            nodeName: (srcNode.data?.name as string) ?? edge.source,
+            direction: 'in',
+            side: sideFromHandle(edge.targetHandle, 'left'),
+          });
         }
       }
       if (edge.source === nodeId) {
-        // Something flows OUT of this node
+        // Something flows OUT of this node — use the sourceHandle for the exit side
         const tgtNode = nodes.find((n) => n.id === edge.target);
         if (tgtNode) {
-          connections.push({ nodeId: edge.target, nodeName: tgtNode.data?.name as string ?? edge.target, direction: 'out' });
+          connections.push({
+            nodeId: edge.target,
+            nodeName: (tgtNode.data?.name as string) ?? edge.target,
+            direction: 'out',
+            side: sideFromHandle(edge.sourceHandle, 'right'),
+          });
         }
       }
     }

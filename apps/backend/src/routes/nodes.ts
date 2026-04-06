@@ -1,9 +1,12 @@
 import { Router } from 'express';
 import { NodeService } from '../services/nodeService.js';
 import { PrismaNodeRepository } from '../repositories/prisma/PrismaNodeRepository.js';
+import { authMiddleware } from '../middleware/authMiddleware.js';
 
 const router = Router();
 const service = new NodeService(new PrismaNodeRepository());
+
+router.use(authMiddleware);
 
 router.get('/:projectId/nodes', async (req, res, next) => {
   try {

@@ -44,13 +44,18 @@ export const createMetadataSlice: StateCreator<
 
   selectNode: (nodeId) => {
     if (!nodeId) {
-      set({ selectedNodeId: null, selectedNode: null, isDetailOpen: false });
+      set((state) => ({
+        selectedNodeId: null,
+        selectedNode: null,
+        isDetailOpen: false,
+        // Clear RF selection too
+        nodes: state.nodes.map((n) => n.selected ? { ...n, selected: false } : n),
+      }));
       return;
     }
-    // Find node data from the canvas nodes
     const flowNode = get().nodes.find((n) => n.id === nodeId);
     if (flowNode) {
-      set({
+      set((state) => ({
         selectedNodeId: nodeId,
         selectedNode: {
           id: flowNode.id,
@@ -70,7 +75,9 @@ export const createMetadataSlice: StateCreator<
           childCount: (flowNode.data.childCount as number) ?? 0,
         },
         isDetailOpen: true,
-      });
+        // Also mark the RF node as selected so the ring highlight shows
+        nodes: state.nodes.map((n) => ({ ...n, selected: n.id === nodeId })),
+      }));
     }
   },
 

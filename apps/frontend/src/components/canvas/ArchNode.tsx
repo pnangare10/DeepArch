@@ -80,9 +80,8 @@ function ArchNodeComponent({ data, selected }: NodeProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const handleMouseLeave = (e: React.MouseEvent) => {
-    // Only hide dots if mouse is leaving to completely outside the node wrapper
-    // (not just moving onto a handle, which is a sibling inside the same wrapper)
-    if (wrapperRef.current?.contains(e.relatedTarget as Node)) return;
+    const related = e.relatedTarget;
+    if (related instanceof Node && wrapperRef.current?.contains(related)) return;
     setHovered(false);
   };
 

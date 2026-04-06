@@ -2,9 +2,12 @@ import { Router } from 'express';
 import { EdgeService } from '../services/edgeService.js';
 import { PrismaEdgeRepository } from '../repositories/prisma/PrismaEdgeRepository.js';
 import { PrismaNodeRepository } from '../repositories/prisma/PrismaNodeRepository.js';
+import { authMiddleware } from '../middleware/authMiddleware.js';
 
 const router = Router();
 const service = new EdgeService(new PrismaEdgeRepository(), new PrismaNodeRepository());
+
+router.use(authMiddleware);
 
 router.get('/:projectId/edges', async (req, res, next) => {
   try {

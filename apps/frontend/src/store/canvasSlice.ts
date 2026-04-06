@@ -12,6 +12,103 @@ import { nodesApi } from '../api/nodes';
 import { edgesApi } from '../api/edges';
 import { dbNodeToFlowNode, dbEdgeToFlowEdge } from '../lib/transforms';
 import type { StoreState } from './index';
+import type { EntryExitConnection, PortSide } from './navigationSlice';
+
+export const PORT_NODE_PREFIX = '__port__';
+export const isPortNode = (id: string) => id.startsWith(PORT_NODE_PREFIX);
+
+// Spacing from the real-node bounding box to where ports are placed
+const PORT_MARGIN = 160;
+const PORT_NODE_WIDTH = 180;
+const PORT_NODE_HEIGHT = 70;
+
+function buildPortNodes(
+  connections: EntryExitConnection[],
+  realNodes: FlowNode[],
+): FlowNode[] {
+  if (connections.length === 0) return [];
+
+  // Compute bounding box of existing real nodes, or default to canvas centre
+  let minX = 0, minY = 0, maxX = 600, maxY = 400;
+  if (realNodes.length > 0) {
+    minX = Math.min(...realNodes.map((n) => n.position.x));
+    minY = Math.min(...realNodes.map((n) => n.position.y));
+    maxX = Math.max(...realNodes.map((n) => n.position.x + (n.width ?? 180)));
+    maxY = Math.max(...realNodes.map((n) => n.position.y + (n.height ?? 60)));
+  }
+
+  // Group connections by side so we can spread them evenly along each edge
+  const bySide: Record<PortSide, EntryExitConnection[]> = {
+    top: [], bottom: [], left: [], right: [],
+  };
+  for (const c of connections) bySide[c.side].push(c);
+
+  const portNodes: FlowNode[] = [];
+
+  const placeAlongSide = (
+    side: PortSide,
+    items: EntryExitConnection[],
+  ) => {
+    const count = items.length;
+    // Minimum gap between port nodes so they never stack
+    const MIN_GAP = PORT_NODE_WIDTH + 20;
+    const MIN_V_GAP = PORT_NODE_HEIGHT + 20;
+
+    items.forEach((conn, i) => {
+      let x = 0, y = 0;
+
+      if (side === 'top' || side === 'bottom') {
+        // Spread horizontally — use max of bounding-box-derived spacing and minimum gap
+        const span = Math.max(maxX - minX, MIN_GAP * count);
+        const centerX = (minX + maxX) / 2;
+        const totalWidth = MIN_GAP * (count - 1);
+        x = count === 1
+          ? centerX - PORT_NODE_WIDTH / 2
+          : centerX - totalWidth / 2 + i * MIN_GAP - PORT_NODE_WIDTH / 2;
+        y = side === 'top'
+          ? minY - PORT_MARGIN - PORT_NODE_HEIGHT
+          : maxY + PORT_MARGIN;
+        // Fallback: if span-based gives more room, use it instead
+        const spanX = minX + (span / (count + 1)) * (i + 1) - PORT_NODE_WIDTH / 2;
+        if (Math.abs(spanX - centerX) > Math.abs(x - centerX)) x = spanX;
+      } else {
+        // left / right — spread vertically
+        const span = Math.max(maxY - minY, MIN_V_GAP * count);
+        const centerY = (minY + maxY) / 2;
+        const totalHeight = MIN_V_GAP * (count - 1);
+        y = count === 1
+          ? centerY - PORT_NODE_HEIGHT / 2
+          : centerY - totalHeight / 2 + i * MIN_V_GAP - PORT_NODE_HEIGHT / 2;
+        x = side === 'left'
+          ? minX - PORT_MARGIN - PORT_NODE_WIDTH
+          : maxX + PORT_MARGIN;
+        const spanY = minY + (span / (count + 1)) * (i + 1) - PORT_NODE_HEIGHT / 2;
+        if (Math.abs(spanY - centerY) > Math.abs(y - centerY)) y = spanY;
+      }
+
+      portNodes.push({
+        id: `${PORT_NODE_PREFIX}${conn.nodeId}_${side}`,
+        type: 'portNode',
+        position: { x, y },
+        selectable: false,
+        deletable: false,
+        data: {
+          name: conn.nodeName,
+          portDirection: conn.direction,
+          portSide: side,
+        },
+        width: PORT_NODE_WIDTH,
+        height: PORT_NODE_HEIGHT,
+      });
+    });
+  };
+
+  for (const side of ['top', 'bottom', 'left', 'right'] as PortSide[]) {
+    placeAlongSide(side, bySide[side]);
+  }
+
+  return portNodes;
+}
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -78,8 +175,12 @@ export const createCanvasSlice: StateCreator<
         nodesApi.getByParent(projectId, parentId),
         edgesApi.getByParent(projectId, parentId),
       ]);
+      const realNodes = nodesData.map(dbNodeToFlowNode);
+      // Inject port nodes for external connections (set by navigateInto before loadLevel)
+      const { entryExitConnections } = get();
+      const portNodes = buildPortNodes(entryExitConnections, realNodes);
       set({
-        nodes: nodesData.map(dbNodeToFlowNode),
+        nodes: [...realNodes, ...portNodes],
         edges: edgesData.map(dbEdgeToFlowEdge),
         isLoading: false,
       });
@@ -94,15 +195,17 @@ export const createCanvasSlice: StateCreator<
     if (state.undoStack.length === 0) return;
     const { projectId, currentParentId } = state;
     const prev = state.undoStack[state.undoStack.length - 1];
-    const currentNodes = state.nodes;
+    // Keep port nodes from current canvas — they are not part of history
+    const portNodes = state.nodes.filter((n) => isPortNode(n.id));
+    const currentNodes = state.nodes.filter((n) => !isPortNode(n.id));
     const currentEdges = state.edges;
 
-    // Apply snapshot immediately for snappy UI
-    set({ nodes: prev.nodes, edges: prev.edges, undoStack: state.undoStack.slice(0, -1) });
+    // Apply snapshot immediately for snappy UI (port nodes stay)
+    set({ nodes: [...prev.nodes, ...portNodes], edges: prev.edges, undoStack: state.undoStack.slice(0, -1) });
 
     if (!projectId) return;
 
-    // Diff nodes: which were added (need delete) vs removed (need recreate)
+    // Diff real nodes only
     const prevNodeIds = new Set(prev.nodes.map((n) => n.id));
     const curNodeIds = new Set(currentNodes.map((n) => n.id));
 
@@ -163,7 +266,7 @@ export const createCanvasSlice: StateCreator<
     try {
       const node = await nodesApi.create(projectId, data);
       set((state) => ({
-        undoStack: [...state.undoStack.slice(-19), { nodes: state.nodes, edges: state.edges }],
+        undoStack: [...state.undoStack.slice(-19), { nodes: state.nodes.filter((n) => !isPortNode(n.id)), edges: state.edges }],
         nodes: [...state.nodes, dbNodeToFlowNode(node)],
       }));
     } catch (err) {
@@ -215,6 +318,27 @@ export const createCanvasSlice: StateCreator<
   addEdge: async (projectId, connection) => {
     if (!connection.source || !connection.target) return;
     const { currentParentId } = get();
+
+    // If either endpoint is a port node, add the edge only to local canvas state
+    // (port nodes are virtual — their connections don't get persisted to the DB)
+    const srcIsPort = isPortNode(connection.source);
+    const tgtIsPort = isPortNode(connection.target);
+    if (srcIsPort || tgtIsPort) {
+      const tempId = `__port_edge__${Date.now()}`;
+      set((state) => ({
+        edges: [...state.edges, {
+          id: tempId,
+          source: connection.source!,
+          target: connection.target!,
+          sourceHandle: connection.sourceHandle ?? undefined,
+          targetHandle: connection.targetHandle ?? undefined,
+          type: 'archEdge',
+          data: { edgeType: 'default', metadata: {} },
+        }],
+      }));
+      return;
+    }
+
     try {
       const edge = await edgesApi.create(projectId, {
         sourceId: connection.source,
@@ -224,7 +348,7 @@ export const createCanvasSlice: StateCreator<
         targetHandle: connection.targetHandle ?? null,
       });
       set((state) => ({
-        undoStack: [...state.undoStack.slice(-19), { nodes: state.nodes, edges: state.edges }],
+        undoStack: [...state.undoStack.slice(-19), { nodes: state.nodes.filter((n) => !isPortNode(n.id)), edges: state.edges }],
         edges: [...state.edges, dbEdgeToFlowEdge(edge)],
       }));
     } catch (err) {
@@ -257,7 +381,7 @@ export const createCanvasSlice: StateCreator<
   },
 
   copySelectedNodes: () => {
-    const selected = get().nodes.filter((n) => n.selected);
+    const selected = get().nodes.filter((n) => n.selected && !isPortNode(n.id));
     if (selected.length === 0) return;
     set({
       clipboard: selected.map((n) => ({
@@ -272,6 +396,7 @@ export const createCanvasSlice: StateCreator<
   },
 
   copyNodeById: (nodeId) => {
+    if (isPortNode(nodeId)) return;
     const node = get().nodes.find((n) => n.id === nodeId);
     if (!node) return;
     set({
@@ -287,6 +412,7 @@ export const createCanvasSlice: StateCreator<
   },
 
   cutNode: async (projectId, nodeId) => {
+    if (isPortNode(nodeId)) return;
     const node = get().nodes.find((n) => n.id === nodeId);
     if (!node) return;
     // Put in clipboard first, then delete
@@ -381,13 +507,14 @@ export const createCanvasSlice: StateCreator<
   },
 
   onNodesChange: (changes) => {
-    // Intercept 'remove' changes to call the API
-    const removeChanges = changes.filter((c) => c.type === 'remove');
+    // Intercept 'remove' changes to call the API (skip port nodes — they are virtual)
+    const removeChanges = changes.filter((c) => c.type === 'remove' && !isPortNode(c.id));
     if (removeChanges.length > 0) {
       const { projectId } = get();
       if (projectId) {
         const state = get();
-        set({ undoStack: [...state.undoStack.slice(-19), { nodes: state.nodes, edges: state.edges }] });
+        const realNodes = state.nodes.filter((n) => !isPortNode(n.id));
+        set({ undoStack: [...state.undoStack.slice(-19), { nodes: realNodes, edges: state.edges }] });
         for (const c of removeChanges) {
           nodesApi.delete(projectId, c.id).catch((err) =>
             console.error('Failed to delete node:', err),
@@ -412,8 +539,10 @@ export const createCanvasSlice: StateCreator<
   },
 
   onEdgesChange: (changes) => {
-    // Intercept 'remove' changes to call the API
-    const removeChanges = changes.filter((c) => c.type === 'remove');
+    // Intercept 'remove' changes to call the API (skip virtual port edges)
+    const removeChanges = changes.filter(
+      (c) => c.type === 'remove' && !c.id.startsWith('__port_edge__'),
+    );
     if (removeChanges.length > 0) {
       const { projectId } = get();
       if (projectId) {

@@ -3,8 +3,9 @@ import type { Project, CreateProjectDTO, UpdateProjectDTO, ArchNode, ArchEdge } 
 import type { IProjectRepository, ProjectExport } from '../interfaces/IProjectRepository.js';
 
 export class PrismaProjectRepository implements IProjectRepository {
-  async findAll(): Promise<Project[]> {
+  async findByUserId(userId: string): Promise<Project[]> {
     const projects = await prisma.project.findMany({
+      where: { userId },
       include: { _count: { select: { nodes: true } } },
       orderBy: { updatedAt: 'desc' },
     });
@@ -18,7 +19,7 @@ export class PrismaProjectRepository implements IProjectRepository {
     }));
   }
 
-  async findById(id: string): Promise<Project | null> {
+  async findById(id: string): Promise<(Project & { userId: string }) | null> {
     const p = await prisma.project.findUnique({
       where: { id },
       include: { _count: { select: { nodes: true } } },
@@ -31,11 +32,12 @@ export class PrismaProjectRepository implements IProjectRepository {
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
       nodeCount: p._count.nodes,
+      userId: p.userId,
     };
   }
 
-  async create(data: CreateProjectDTO): Promise<Project> {
-    const p = await prisma.project.create({ data });
+  async create(data: CreateProjectDTO, userId: string): Promise<Project> {
+    const p = await prisma.project.create({ data: { ...data, userId } });
     return {
       id: p.id,
       name: p.name,
@@ -114,10 +116,10 @@ export class PrismaProjectRepository implements IProjectRepository {
     };
   }
 
-  async importProject(data: ProjectExport): Promise<Project> {
+  async importProject(data: ProjectExport, userId: string): Promise<Project> {
     return prisma.$transaction(async (tx) => {
       const project = await tx.project.create({
-        data: { name: data.project.name, description: data.project.description },
+        data: { name: data.project.name, description: data.project.description, userId },
       });
 
       // Build old->new ID map so edges reference correct new node IDs

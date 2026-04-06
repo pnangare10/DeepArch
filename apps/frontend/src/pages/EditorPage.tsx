@@ -41,21 +41,21 @@ export function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!projectId) return;
     projectsApi
       .getById(projectId)
       .then(setProject)
-      .catch(() => setError(true));
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load project'));
   }, [projectId]);
 
   if (error) {
     return (
       <div className="flex items-center justify-center h-screen text-slate-500">
         <div className="text-center">
-          <p className="text-lg font-medium mb-2">Project not found</p>
+          <p className="text-lg font-medium mb-2">{error}</p>
           <button
             onClick={() => navigate('/')}
             className="text-blue-600 hover:underline text-sm"
