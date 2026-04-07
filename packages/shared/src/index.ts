@@ -26,6 +26,14 @@ export {
   ROLE_LABELS,
 } from './types/collaboration.js';
 
+export type {
+  AIGenerateRequest,
+  AINodeDraft,
+  AIEdgeDraft,
+  AIArchitectureSchema,
+  AISSEEvent,
+} from './types/ai.js';
+
 export {
   NODE_TYPES,
   NODE_TYPE_GROUPS,

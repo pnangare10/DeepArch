@@ -9,6 +9,7 @@ import { searchRoutes } from './routes/search.js';
 import authRoutes from './routes/auth.js';
 import membersRouter from './routes/members.js';
 import commentsRouter from './routes/comments.js';
+import aiRouter from './routes/ai.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { initSocket, setIo } from './socket/index.js';
 
@@ -26,6 +27,7 @@ app.use('/api/projects', edgeRoutes);
 app.use('/api/projects', searchRoutes);
 app.use('/api/projects/:projectId/members', membersRouter);
 app.use('/api/projects/:projectId', commentsRouter);
+app.use('/api/projects', aiRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {

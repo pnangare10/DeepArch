@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
-import { Plus, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import { Plus, ZoomIn, ZoomOut, Maximize, Sparkles } from 'lucide-react';
 import { useStore } from '../../store';
 import { NodeTypePicker } from '../ui/NodeTypePicker';
+import { AIGenerateModal } from './AIGenerateModal';
 
 export function CanvasToolbar() {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
   const [newNodeName, setNewNodeName] = useState('');
   const [newNodeType, setNewNodeType] = useState('default');
   const projectId = useStore((s) => s.projectId);
@@ -41,6 +43,13 @@ export function CanvasToolbar() {
         >
           <Plus className="w-4 h-4" />
         </button>
+        <button
+          onClick={() => { setShowAddMenu(false); setShowAIModal(true); }}
+          className="p-2 hover:bg-violet-50 rounded-md transition-colors text-violet-600"
+          title="Generate with AI"
+        >
+          <Sparkles className="w-4 h-4" />
+        </button>
         <div className="w-px bg-slate-200" />
         <button
           onClick={() => zoomIn()}
@@ -64,6 +73,10 @@ export function CanvasToolbar() {
           <Maximize className="w-4 h-4" />
         </button>
       </div>
+
+      {showAIModal && projectId && (
+        <AIGenerateModal projectId={projectId} onClose={() => setShowAIModal(false)} />
+      )}
 
       {showAddMenu && (
         <div className="bg-white rounded-lg shadow-md border border-slate-200 p-3 w-56">

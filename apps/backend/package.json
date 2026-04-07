@@ -13,6 +13,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.84.0",
     "@deeparch/shared": "*",
     "@prisma/client": "^6.3.0",
     "bcrypt": "^6.0.0",
