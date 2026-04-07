@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import Anthropic from '@anthropic-ai/sdk';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { getMemberRole } from '../services/memberService.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { PrismaNodeRepository } from '../repositories/prisma/PrismaNodeRepository.js';
 import { PrismaEdgeRepository } from '../repositories/prisma/PrismaEdgeRepository.js';
 import { computeLayout } from '../services/layoutEngine.js';
+import { getAIProvider, buildPrompts, parseAIResponse } from '../services/aiProvider.js';
 import { broadcast } from '../socket/index.js';
-import type { AIGenerateRequest, AIArchitectureSchema } from '@deeparch/shared';
+import type { AIGenerateRequest } from '@deeparch/shared';
 import { NODE_TYPES } from '@deeparch/shared';
 
 const router = Router();
@@ -39,52 +39,17 @@ router.post('/:projectId/ai/generate', async (req, res, next) => {
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
 
-    const send = (event: object) => {
-      res.write(`data: ${JSON.stringify(event)}\n\n`);
-    };
+    const send = (event: object) => res.write(`data: ${JSON.stringify(event)}\n\n`);
 
-    send({ type: 'status', message: 'Generating architecture with AI...' });
+    const providerName = process.env.AI_PROVIDER || 'ollama';
+    send({ type: 'status', message: `Generating architecture with AI (${providerName})...` });
 
     const validNodeTypes = Object.values(NODE_TYPES).join(' | ');
-
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const { system, user } = buildPrompts(prompt, validNodeTypes);
 
     let rawContent = '';
     try {
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 4096,
-        system: `You are an architecture diagram generator. Given a description, produce a JSON object representing the architecture.
-Return ONLY valid JSON — no markdown fences, no explanation text, just the raw JSON object.`,
-        messages: [
-          {
-            role: 'user',
-            content: `Generate an architecture diagram for: ${prompt}
-
-Return JSON with this exact shape:
-{
-  "nodes": [
-    { "tempId": "n1", "name": "string", "nodeType": "${validNodeTypes}", "description": "string", "layer": 0 }
-  ],
-  "edges": [
-    { "sourceId": "n1", "targetId": "n2", "label": "optional string" }
-  ]
-}
-
-Rules:
-- layer starts at 0 for the leftmost/first tier, increment for each downstream tier
-- tempId must be unique strings like "n1", "n2", "n3"
-- edges reference tempId values (not names)
-- max 20 nodes, max 30 edges
-- nodeType must be exactly one of: ${validNodeTypes}
-- keep names short (1-4 words)
-- description is optional but helpful (1 sentence max)`,
-          },
-        ],
-      });
-
-      rawContent =
-        response.content[0].type === 'text' ? response.content[0].text : '';
+      rawContent = await getAIProvider().generate(system, user);
     } catch (err: any) {
       send({ type: 'error', message: `AI request failed: ${err.message ?? 'Unknown error'}` });
       res.end();
@@ -92,11 +57,9 @@ Rules:
     }
 
     // Parse JSON
-    let schema: AIArchitectureSchema;
+    let schema;
     try {
-      // Strip markdown fences if model adds them despite instructions
-      const cleaned = rawContent.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
-      schema = JSON.parse(cleaned);
+      schema = parseAIResponse(rawContent);
     } catch {
       send({ type: 'error', message: 'Failed to parse AI response as JSON. Please try again.' });
       res.end();
@@ -141,8 +104,7 @@ Rules:
     for (const edgeDraft of schema.edges) {
       const sourceId = tempIdToRealId.get(edgeDraft.sourceId);
       const targetId = tempIdToRealId.get(edgeDraft.targetId);
-      if (!sourceId || !targetId) continue;
-      if (sourceId === targetId) continue;
+      if (!sourceId || !targetId || sourceId === targetId) continue;
       try {
         const created = await edgeRepo.create(projectId, {
           sourceId,
