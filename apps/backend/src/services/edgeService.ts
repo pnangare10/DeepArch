@@ -21,12 +21,16 @@ export class EdgeService {
     if (source.projectId !== projectId || target.projectId !== projectId) {
       throw new AppError(400, 'Nodes belong to different project');
     }
-    if (source.parentId !== target.parentId) {
+    // Allow cross-level edges when parentId is explicitly set — this covers port-node
+    // connections where one endpoint is a node from the parent level (input/output blocks).
+    // In that case the edge is stored at the explicitly provided parentId level.
+    const resolvedParentId = data.parentId !== undefined ? data.parentId : source.parentId;
+    if (data.parentId === undefined && source.parentId !== target.parentId) {
       throw new AppError(400, 'Source and target must be at the same level (same parent)');
     }
     return this.repo.create(projectId, {
       ...data,
-      parentId: data.parentId ?? source.parentId,
+      parentId: resolvedParentId,
     });
   }
 

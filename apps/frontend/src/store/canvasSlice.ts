@@ -186,9 +186,30 @@ export const createCanvasSlice: StateCreator<
       // Inject port nodes for external connections (set by navigateInto before loadLevel)
       const { entryExitConnections } = get();
       const portNodes = buildPortNodes(entryExitConnections, realNodes);
+
+      // Build a map from real node ID → port node canvas ID so edges can be remapped.
+      // Port node ID format: __port__{realNodeId}_{side}
+      const realIdToPortId = new Map<string, string>();
+      for (const portNode of portNodes) {
+        // Extract real node ID: strip prefix and trailing _{side}
+        const withoutPrefix = portNode.id.slice(PORT_NODE_PREFIX.length);
+        const realId = withoutPrefix.replace(/_(?:top|bottom|left|right)$/, '');
+        realIdToPortId.set(realId, portNode.id);
+      }
+
+      // Remap edge source/target to port node IDs where applicable
+      const flowEdges = edgesData.map((e) => {
+        const fe = dbEdgeToFlowEdge(e);
+        return {
+          ...fe,
+          source: realIdToPortId.get(fe.source) ?? fe.source,
+          target: realIdToPortId.get(fe.target) ?? fe.target,
+        };
+      });
+
       set({
         nodes: [...realNodes, ...portNodes],
-        edges: edgesData.map(dbEdgeToFlowEdge),
+        edges: flowEdges,
         isLoading: false,
       });
     } catch (err) {
@@ -326,23 +347,38 @@ export const createCanvasSlice: StateCreator<
     if (!connection.source || !connection.target) return;
     const { currentParentId } = get();
 
-    // If either endpoint is a port node, add the edge only to local canvas state
-    // (port nodes are virtual — their connections don't get persisted to the DB)
+    // Port node ID format: __port__{realNodeId}_{side}
+    // Edges connecting a port node to an internal node ARE saved to the DB —
+    // the port node is substituted with its real node ID.
+    const extractRealId = (id: string) =>
+      isPortNode(id) ? id.slice(PORT_NODE_PREFIX.length).replace(/_(?:top|bottom|left|right)$/, '') : id;
+
     const srcIsPort = isPortNode(connection.source);
     const tgtIsPort = isPortNode(connection.target);
+
     if (srcIsPort || tgtIsPort) {
-      const tempId = `__port_edge__${Date.now()}`;
-      set((state) => ({
-        edges: [...state.edges, {
-          id: tempId,
-          source: connection.source!,
-          target: connection.target!,
-          sourceHandle: connection.sourceHandle ?? undefined,
-          targetHandle: connection.targetHandle ?? undefined,
-          type: 'archEdge',
-          data: { edgeType: 'default', metadata: {} },
-        }],
-      }));
+      const realSource = extractRealId(connection.source);
+      const realTarget = extractRealId(connection.target);
+      try {
+        const edge = await edgesApi.create(projectId, {
+          sourceId: realSource,
+          targetId: realTarget,
+          parentId: currentParentId,
+          sourceHandle: connection.sourceHandle ?? null,
+          targetHandle: connection.targetHandle ?? null,
+        });
+        // Keep the port node ID in the canvas edge so the visual connection stays
+        // anchored to the port node, but the persisted edge uses real IDs.
+        set((state) => ({
+          edges: [...state.edges, {
+            ...dbEdgeToFlowEdge(edge),
+            source: connection.source!,
+            target: connection.target!,
+          }],
+        }));
+      } catch (err) {
+        console.error('Failed to save port edge:', err);
+      }
       return;
     }
 
@@ -597,10 +633,8 @@ export const createCanvasSlice: StateCreator<
   },
 
   onEdgesChange: (changes) => {
-    // Intercept 'remove' changes to call the API (skip virtual port edges)
-    const removeChanges = changes.filter(
-      (c) => c.type === 'remove' && !(c as { id: string }).id.startsWith('__port_edge__'),
-    );
+    // Intercept 'remove' changes to call the API
+    const removeChanges = changes.filter((c) => c.type === 'remove');
     if (removeChanges.length > 0) {
       const { projectId } = get();
       if (projectId) {

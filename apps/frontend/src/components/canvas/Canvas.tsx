@@ -14,16 +14,16 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useRef } from "react";
+import { useAlignmentGuides } from "../../hooks/useAlignmentGuides";
 import { useStore } from "../../store";
 import { useToast } from "../ui/Toast";
+import { AlignmentGuides } from "./AlignmentGuides";
 import { ArchEdge } from "./ArchEdge";
 import { ArchNode } from "./ArchNode";
-import { PortNode } from "./PortNode";
-import { AlignmentGuides } from "./AlignmentGuides";
 import { CanvasToolbar } from "./CanvasToolbar";
 import { ContextMenu } from "./ContextMenu";
+import { PortNode } from "./PortNode";
 import { RemoteCursors } from "./RemoteCursor";
-import { useAlignmentGuides } from "../../hooks/useAlignmentGuides";
 
 const nodeTypes = { archNode: ArchNode, portNode: PortNode };
 const edgeTypes = { archEdge: ArchEdge };
@@ -53,7 +53,16 @@ function CanvasInner({ projectId }: CanvasProps) {
   const emitCursorMove = useStore((s) => s.emitCursorMove);
 
   const { screenToFlowPosition } = useReactFlow();
-  const { guides, onNodeDrag, onNodeDragStop } = useAlignmentGuides(nodes);
+  const { guides, onNodeDrag, onNodeDragStop, applySnapRef } =
+    useAlignmentGuides(nodes);
+
+  // Let the alignment hook snap nodes by pushing a position change through React Flow
+  applySnapRef.current = useCallback(
+    (nodeId: string, x: number, y: number) => {
+      onNodesChange([{ type: "position", id: nodeId, position: { x, y } }]);
+    },
+    [onNodesChange],
+  );
 
   // Global keyboard shortcuts (fire even when canvas doesn't have keyboard focus)
   const undoRef = useRef(undo);
@@ -74,16 +83,21 @@ function CanvasInner({ projectId }: CanvasProps) {
   breadcrumbsRef.current = breadcrumbs;
 
   useEffect(() => {
-    const MOVE_STEP = 40;
+    const MOVE_STEP = 1;
 
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
-      const inInput = tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement).isContentEditable;
+      const inInput =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        (e.target as HTMLElement).isContentEditable;
 
       // Tab always cycles nodes regardless of where focus is
       if (e.key === "Tab" && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        const realNodes = useStore.getState().nodes.filter((n) => !n.id.startsWith('__port__'));
+        const realNodes = useStore
+          .getState()
+          .nodes.filter((n) => !n.id.startsWith("__port__"));
         if (realNodes.length === 0) return;
         const currentIdx = realNodes.findIndex((n) => n.selected);
         const nextIdx = (currentIdx + 1) % realNodes.length;
@@ -102,14 +116,17 @@ function CanvasInner({ projectId }: CanvasProps) {
       if (inInput) return;
 
       const state = useStore.getState();
-      const realNodes = state.nodes.filter((n) => !n.id.startsWith('__port__'));
+      const realNodes = state.nodes.filter((n) => !n.id.startsWith("__port__"));
       const selectedNode = realNodes.find((n) => n.selected);
 
       // Enter → drill into selected node
       if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
         if (selectedNode) {
           e.preventDefault();
-          navigateIntoRef.current(selectedNode.id, selectedNode.data?.name as string);
+          navigateIntoRef.current(
+            selectedNode.id,
+            selectedNode.data?.name as string,
+          );
         }
         return;
       }
@@ -131,13 +148,28 @@ function CanvasInner({ projectId }: CanvasProps) {
 
         if (e.shiftKey && selectedNode) {
           // Move the selected node
-          const dx = e.key === "ArrowLeft" ? -MOVE_STEP : e.key === "ArrowRight" ? MOVE_STEP : 0;
-          const dy = e.key === "ArrowUp" ? -MOVE_STEP : e.key === "ArrowDown" ? MOVE_STEP : 0;
-          state.onNodesChange([{
-            type: 'position',
-            id: selectedNode.id,
-            position: { x: selectedNode.position.x + dx, y: selectedNode.position.y + dy },
-          }]);
+          const dx =
+            e.key === "ArrowLeft"
+              ? -MOVE_STEP
+              : e.key === "ArrowRight"
+                ? MOVE_STEP
+                : 0;
+          const dy =
+            e.key === "ArrowUp"
+              ? -MOVE_STEP
+              : e.key === "ArrowDown"
+                ? MOVE_STEP
+                : 0;
+          state.onNodesChange([
+            {
+              type: "position",
+              id: selectedNode.id,
+              position: {
+                x: selectedNode.position.x + dx,
+                y: selectedNode.position.y + dy,
+              },
+            },
+          ]);
         } else {
           // Traverse to the nearest node in the arrow direction
           if (realNodes.length === 0) return;
@@ -145,15 +177,17 @@ function CanvasInner({ projectId }: CanvasProps) {
           const ox = origin.position.x + (origin.width ?? 160) / 2;
           const oy = origin.position.y + (origin.height ?? 60) / 2;
 
-          const candidates = realNodes.filter((n) => n.id !== origin.id).filter((n) => {
-            const nx = n.position.x + (n.width ?? 160) / 2;
-            const ny = n.position.y + (n.height ?? 60) / 2;
-            if (e.key === "ArrowRight") return nx > ox;
-            if (e.key === "ArrowLeft")  return nx < ox;
-            if (e.key === "ArrowDown")  return ny > oy;
-            if (e.key === "ArrowUp")    return ny < oy;
-            return false;
-          });
+          const candidates = realNodes
+            .filter((n) => n.id !== origin.id)
+            .filter((n) => {
+              const nx = n.position.x + (n.width ?? 160) / 2;
+              const ny = n.position.y + (n.height ?? 60) / 2;
+              if (e.key === "ArrowRight") return nx > ox;
+              if (e.key === "ArrowLeft") return nx < ox;
+              if (e.key === "ArrowDown") return ny > oy;
+              if (e.key === "ArrowUp") return ny < oy;
+              return false;
+            });
 
           if (candidates.length === 0) return;
 
@@ -162,8 +196,12 @@ function CanvasInner({ projectId }: CanvasProps) {
             const score = (n: typeof origin) => {
               const nx = n.position.x + (n.width ?? 160) / 2;
               const ny = n.position.y + (n.height ?? 60) / 2;
-              const axial  = ["ArrowLeft", "ArrowRight"].includes(e.key) ? Math.abs(nx - ox) : Math.abs(ny - oy);
-              const lateral = ["ArrowLeft", "ArrowRight"].includes(e.key) ? Math.abs(ny - oy) : Math.abs(nx - ox);
+              const axial = ["ArrowLeft", "ArrowRight"].includes(e.key)
+                ? Math.abs(nx - ox)
+                : Math.abs(ny - oy);
+              const lateral = ["ArrowLeft", "ArrowRight"].includes(e.key)
+                ? Math.abs(ny - oy)
+                : Math.abs(nx - ox);
               return axial + lateral * 2;
             };
             return score(cur) < score(prev) ? cur : prev;
@@ -196,31 +234,39 @@ function CanvasInner({ projectId }: CanvasProps) {
   // Listen for access-denied events from navigateInto (role-based node blocking)
   useEffect(() => {
     const handler = (e: Event) => {
-      const message = (e as CustomEvent<{ message: string }>).detail?.message ?? 'Access denied';
-      toast(message, 'warning');
+      const message =
+        (e as CustomEvent<{ message: string }>).detail?.message ??
+        "Access denied";
+      toast(message, "warning");
     };
-    window.addEventListener('deeparch:access-denied', handler);
-    return () => window.removeEventListener('deeparch:access-denied', handler);
+    window.addEventListener("deeparch:access-denied", handler);
+    return () => window.removeEventListener("deeparch:access-denied", handler);
   }, [toast]);
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
       let conn = connection;
       // If the user dragged an arrow TO an INPUT port, flip it so it goes FROM the port instead
-      if (conn.target?.startsWith('__port__') && conn.targetHandle === 'port-source') {
+      if (
+        conn.target?.startsWith("__port__") &&
+        conn.targetHandle === "port-source"
+      ) {
         conn = {
           source: conn.target,
-          sourceHandle: 'port-source',
+          sourceHandle: "port-source",
           target: conn.source,
           targetHandle: conn.sourceHandle,
         };
       }
       // If the user dragged FROM an OUTPUT port, flip it so it points TO the port instead
-      if (conn.source?.startsWith('__port__') && conn.sourceHandle === 'port-target') {
+      if (
+        conn.source?.startsWith("__port__") &&
+        conn.sourceHandle === "port-target"
+      ) {
         conn = {
           source: conn.target,
           sourceHandle: conn.targetHandle,
           target: conn.source,
-          targetHandle: 'port-target',
+          targetHandle: "port-target",
         };
       }
       addEdge(projectId, conn);
@@ -231,16 +277,20 @@ function CanvasInner({ projectId }: CanvasProps) {
   const isValidConnection = useCallback((connection: Connection | FlowEdge) => {
     if (connection.source === connection.target) return false;
     // Block same-side connections between regular nodes (e.g. top→top)
-    if (connection.sourceHandle && connection.targetHandle &&
-        connection.sourceHandle === connection.targetHandle &&
-        !connection.source?.startsWith('__port__') &&
-        !connection.target?.startsWith('__port__')) return false;
+    if (
+      connection.sourceHandle &&
+      connection.targetHandle &&
+      connection.sourceHandle === connection.targetHandle &&
+      !connection.source?.startsWith("__port__") &&
+      !connection.target?.startsWith("__port__")
+    )
+      return false;
     return true;
   }, []);
 
   const onNodeDoubleClick: NodeMouseHandler = useCallback(
     (_event, node) => {
-      if (node.id.startsWith('__port__')) return;
+      if (node.id.startsWith("__port__")) return;
       navigateInto(node.id, node.data?.name as string);
     },
     [navigateInto],
@@ -248,7 +298,7 @@ function CanvasInner({ projectId }: CanvasProps) {
 
   const onNodeClick: NodeMouseHandler = useCallback(
     (_event, node) => {
-      if (node.id.startsWith('__port__')) return;
+      if (node.id.startsWith("__port__")) return;
       selectNode(node.id);
     },
     [selectNode],
@@ -263,7 +313,7 @@ function CanvasInner({ projectId }: CanvasProps) {
     (event, node) => {
       event.preventDefault();
       // Port nodes are virtual — suppress context menu
-      if (node.id.startsWith('__port__')) return;
+      if (node.id.startsWith("__port__")) return;
       setContextMenu({
         type: "node",
         id: node.id,
@@ -309,7 +359,10 @@ function CanvasInner({ projectId }: CanvasProps) {
 
   const onMouseMove = useCallback(
     (event: React.MouseEvent) => {
-      const flowPos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      const flowPos = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
       emitCursorMove(projectId, flowPos.x, flowPos.y);
     },
     [projectId, emitCursorMove, screenToFlowPosition],
@@ -335,7 +388,11 @@ function CanvasInner({ projectId }: CanvasProps) {
   }
 
   return (
-    <div className="flex-1 relative" onKeyDown={onKeyDown} onMouseMove={onMouseMove}>
+    <div
+      className="flex-1 relative"
+      onKeyDown={onKeyDown}
+      onMouseMove={onMouseMove}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -359,6 +416,7 @@ function CanvasInner({ projectId }: CanvasProps) {
         selectionOnDrag
         selectionMode={SelectionMode.Partial}
         panOnDrag={[1, 2]}
+        panActivationKeyCode="Space"
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
         defaultEdgeOptions={{
