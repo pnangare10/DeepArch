@@ -10,12 +10,12 @@ router.use(authMiddleware);
 
 router.get('/:projectId/search', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const query = req.query.q as string;
+    const query = typeof req.query.q === 'string' ? req.query.q : '';
     if (!query) {
       res.json([]);
       return;
     }
-    const results = await service.search(req.params.projectId, query);
+    const results = await service.search(req.params['projectId'] as string, query);
     res.json(results);
   } catch (err) {
     next(err);
