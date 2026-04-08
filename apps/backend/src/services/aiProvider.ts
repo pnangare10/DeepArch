@@ -1,4 +1,4 @@
-import type { AIArchitectureSchema } from '@deeparch/shared';
+import type { AIArchitectureSchema } from "@deeparch/shared";
 
 export interface AIProvider {
   generate(systemPrompt: string, userPrompt: string): Promise<string>;
@@ -7,97 +7,100 @@ export interface AIProvider {
 // ── Anthropic ──────────────────────────────────────────────────────────────
 class AnthropicProvider implements AIProvider {
   async generate(systemPrompt: string, userPrompt: string): Promise<string> {
-    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const response = await client.messages.create({
-      model: process.env.AI_MODEL || 'claude-sonnet-4-6',
+      model: process.env.AI_MODEL || "claude-sonnet-4-6",
       max_tokens: 4096,
       system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
+      messages: [{ role: "user", content: userPrompt }],
     });
-    return response.content[0].type === 'text' ? response.content[0].text : '';
+    return response.content[0].type === "text" ? response.content[0].text : "";
   }
 }
 
 // ── Ollama ─────────────────────────────────────────────────────────────────
 class OllamaProvider implements AIProvider {
   async generate(systemPrompt: string, userPrompt: string): Promise<string> {
-    const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-    const model = process.env.AI_MODEL || 'llama3';
+    const baseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+    const model = process.env.AI_MODEL || "deepseek-v3.1:671b-cloud";
 
     const response = await fetch(`${baseUrl}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model,
         stream: false,
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
         ],
       }),
     });
 
     if (!response.ok) {
-      const text = await response.text().catch(() => '');
+      const text = await response.text().catch(() => "");
       throw new Error(`Ollama request failed (${response.status}): ${text}`);
     }
 
     const data = (await response.json()) as { message?: { content?: string } };
-    return data.message?.content ?? '';
+    return data.message?.content ?? "";
   }
 }
 
 // ── OpenAI ─────────────────────────────────────────────────────────────────
 class OpenAIProvider implements AIProvider {
   async generate(systemPrompt: string, userPrompt: string): Promise<string> {
-    const baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
-    const model = process.env.AI_MODEL || 'gpt-4o';
+    const baseUrl = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
+    const model = process.env.AI_MODEL || "gpt-4o";
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
         model,
         max_tokens: 4096,
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
         ],
       }),
     });
 
     if (!response.ok) {
-      const text = await response.text().catch(() => '');
+      const text = await response.text().catch(() => "");
       throw new Error(`OpenAI request failed (${response.status}): ${text}`);
     }
 
     const data = (await response.json()) as {
       choices?: { message?: { content?: string } }[];
     };
-    return data.choices?.[0]?.message?.content ?? '';
+    return data.choices?.[0]?.message?.content ?? "";
   }
 }
 
 // ── Factory ────────────────────────────────────────────────────────────────
 export function getAIProvider(): AIProvider {
-  const provider = (process.env.AI_PROVIDER || 'ollama').toLowerCase();
+  const provider = (process.env.AI_PROVIDER || "ollama").toLowerCase();
   switch (provider) {
-    case 'anthropic':
+    case "anthropic":
       return new AnthropicProvider();
-    case 'openai':
+    case "openai":
       return new OpenAIProvider();
-    case 'ollama':
+    case "ollama":
     default:
       return new OllamaProvider();
   }
 }
 
 // ── Shared prompt builder ──────────────────────────────────────────────────
-export function buildPrompts(prompt: string, validNodeTypes: string): { system: string; user: string } {
+export function buildPrompts(
+  prompt: string,
+  validNodeTypes: string,
+): { system: string; user: string } {
   return {
     system: `You are an architecture diagram generator. Given a description, produce a JSON object representing the architecture.
 Return ONLY valid JSON — no markdown fences, no explanation text, just the raw JSON object.`,
@@ -127,8 +130,8 @@ Rules:
 export function parseAIResponse(rawContent: string): AIArchitectureSchema {
   // Strip markdown fences if the model wraps output despite instructions
   const cleaned = rawContent
-    .replace(/^```[a-z]*\n?/im, '')
-    .replace(/\n?```\s*$/im, '')
+    .replace(/^```[a-z]*\n?/im, "")
+    .replace(/\n?```\s*$/im, "")
     .trim();
   return JSON.parse(cleaned) as AIArchitectureSchema;
 }

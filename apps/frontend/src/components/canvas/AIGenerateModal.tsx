@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Sparkles, Loader2 } from 'lucide-react';
 import { generateArchitecture } from '../../api/ai';
 import { useStore } from '../../store';
@@ -69,7 +70,7 @@ export function AIGenerateModal({ projectId, onClose }: AIGenerateModalProps) {
     onClose();
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 overflow-hidden">
         {/* Header */}
@@ -156,6 +157,7 @@ export function AIGenerateModal({ projectId, onClose }: AIGenerateModalProps) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

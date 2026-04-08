@@ -75,8 +75,8 @@ router.post('/:projectId/ai/generate', async (req, res, next) => {
 
     send({ type: 'status', message: `Creating ${schema.nodes.length} nodes...` });
 
-    // Compute layout positions
-    const positions = computeLayout(schema.nodes);
+    // Compute layout positions + smart edge handles
+    const { positions, edgeHandles } = computeLayout(schema.nodes, schema.edges);
 
     // Create nodes in DB
     const tempIdToRealId = new Map<string, string>();
@@ -105,12 +105,15 @@ router.post('/:projectId/ai/generate', async (req, res, next) => {
       const sourceId = tempIdToRealId.get(edgeDraft.sourceId);
       const targetId = tempIdToRealId.get(edgeDraft.targetId);
       if (!sourceId || !targetId || sourceId === targetId) continue;
+      const handles = edgeHandles.get(`${edgeDraft.sourceId}→${edgeDraft.targetId}`);
       try {
         const created = await edgeRepo.create(projectId, {
           sourceId,
           targetId,
           parentId,
           label: edgeDraft.label,
+          sourceHandle: handles?.sourceHandle,
+          targetHandle: handles?.targetHandle,
         });
         edgeCount++;
         broadcast(projectId, 'edge:created', { edge: created });
