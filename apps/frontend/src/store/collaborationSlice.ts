@@ -35,7 +35,7 @@ export const createCollaborationSlice: StateCreator<
     const existing = get().socket;
     if (existing) existing.disconnect();
 
-    const socket = socketIo('http://localhost:3001', {
+    const socket = socketIo(import.meta.env.VITE_API_URL ?? 'http://localhost:3001', {
       auth: { token },
       transports: ['websocket'],
     });

@@ -9,7 +9,8 @@ export function generateArchitecture(
   const controller = new AbortController();
   const token = localStorage.getItem('deeparch_token');
 
-  fetch(`/api/projects/${projectId}/ai/generate`, {
+  const apiBase = import.meta.env.VITE_API_URL ?? '';
+  fetch(`${apiBase}/api/projects/${projectId}/ai/generate`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

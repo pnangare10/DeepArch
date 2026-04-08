@@ -31,8 +31,9 @@ function userColor(userId: string): string {
 }
 
 export function initSocket(httpServer: HttpServer): SocketServer {
+  const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',');
   const io = new SocketServer(httpServer, {
-    cors: { origin: 'http://localhost:5173', methods: ['GET', 'POST'], credentials: true },
+    cors: { origin: allowedOrigins, methods: ['GET', 'POST'], credentials: true },
   });
 
   // JWT auth middleware for WebSocket handshake
