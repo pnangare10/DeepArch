@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 DeepArch is an interactive, multi-level architecture visualization platform ("Google Maps for Software Architecture"). Users create hierarchical diagrams where each block/node can be drilled into to reveal deeper sub-architectures. Built as an npm workspaces monorepo.
 
+## Known Patterns & Pitfalls
+
+- **React Flow node updates**: Never replace the full node object (`dbNodeToFlowNode(updated)`) when updating data—always spread the existing node and update only `data` fields. React Flow attaches internal properties (`measured`, layout state) that get lost if you replace the whole node.
+- **Edge handles**: When updating edges with connection points, cross-layer edges should use `sourceHandle: 'right'` and `targetHandle: 'left'` (horizontal flow); same-layer use `bottom→top` or `top→bottom`.
+- **Port nodes**: Keep the visual edge pointing to the port node (`__port__{id}_{side}`) but save the real node IDs to the database. On reload, build a `realIdToPortId` map and remap edge source/target IDs.
+
 ## Commands
 
 ### Development
@@ -79,14 +85,32 @@ Pages → Components → Zustand Store (4 slices) → API Client → Backend
 5. Only the current level's nodes are in memory — no full tree loaded
 
 ### Key Conventions
-- Node types defined in `@deeparch/shared` constants: `default`, `service`, `database`, `queue`, `gateway`, `load-balancer`, `frontend`, `environment`, `infrastructure`
+- Node types defined in `@deeparch/shared` constants: `default`, `service`, `database`, `queue`, `gateway`, `load-balancer`, `frontend`, `environment`, `infrastructure`, `sticky-note`
 - Custom React Flow node component (`ArchNode`) maps node types to Lucide icons and Tailwind color classes
 - Frontend uses `@` path alias mapped to `./src/` (configured in vite.config.ts and tsconfig.json)
 - Backend uses `.js` extensions in imports (ESM compatibility with tsx)
 - Vite proxies `/api` requests to the backend at `localhost:3001`
+- **Port nodes**: Virtual nodes with ID format `__port__{realNodeId}_{side}` (side = top|bottom|left|right) represent external connections for nodes with children. Edges connect to port nodes visually but save real node IDs to the database for persistence.
+
+## AI Architecture Generation (Phase 5)
+
+- `POST /api/projects/:projectId/ai/generate` — SSE streaming endpoint
+- `AI_PROVIDER` env flag selects backend: `ollama` (default, free, local) | `anthropic` | `openai`
+- `layoutEngine.ts` — computes smart layout: vertical column centering, cross-layer edges use right→left handles, same-layer edges use bottom→top
+- Claude generates structured JSON nodes/edges, route creates them in DB and broadcasts via WebSocket to collaborators
+
+## Real-time Collaboration (Phase 4)
+
+- WebSocket via Socket.io (`src/socket/index.ts`), JWT handshake auth
+- Broadcast events: `node:created/updated/deleted/moved`, `edge:created/deleted`, `comment:created/updated/deleted`, `cursor:moved`
+- Zustand `collaborationSlice` — active users, cursors, remote cursor rendering via `ViewportPortal`
+- Comments & member sharing via REST (`/api/projects/:projectId/members`, `/api/projects/:projectId/nodes/:nodeId/comments`)
+- Node-level access control via `metadata.accessInclude`/`accessExclude` (role-based drill-in restrictions)
 
 ## API Endpoints
 
 All under `/api`. Nodes and edges use `?parentId=<id|null>` query param to scope to a hierarchy level.
 
-Key non-obvious endpoint: `PATCH /projects/:id/nodes/batch` — batch position updates for drag operations (must be registered before `/:nodeId` route to avoid param collision).
+Key non-obvious endpoints:
+- `PATCH /projects/:id/nodes/batch` — batch position updates for drag operations (must be registered before `/:nodeId` route to avoid param collision)
+- `POST /projects/:projectId/ai/generate` — AI generation (SSE streaming, see above)

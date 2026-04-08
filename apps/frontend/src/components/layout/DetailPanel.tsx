@@ -12,7 +12,7 @@ export function DetailPanel() {
   const projectId = useStore((s) => s.projectId);
   const closeDetail = useStore((s) => s.closeDetail);
 
-  if (!isDetailOpen || !selectedNode) return null;
+  if (!isDetailOpen || !selectedNode || selectedNode.nodeType === 'sticky-note') return null;
 
   return (
     <div className="w-72 border-l border-slate-200 bg-white flex flex-col h-full overflow-hidden flex-shrink-0">

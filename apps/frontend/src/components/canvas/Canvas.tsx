@@ -24,8 +24,9 @@ import { CanvasToolbar } from "./CanvasToolbar";
 import { ContextMenu } from "./ContextMenu";
 import { PortNode } from "./PortNode";
 import { RemoteCursors } from "./RemoteCursor";
+import { StickyNote } from "./StickyNote";
 
-const nodeTypes = { archNode: ArchNode, portNode: PortNode };
+const nodeTypes = { archNode: ArchNode, portNode: PortNode, stickyNote: StickyNote };
 const edgeTypes = { archEdge: ArchEdge };
 
 interface CanvasProps {
@@ -291,6 +292,7 @@ function CanvasInner({ projectId }: CanvasProps) {
   const onNodeDoubleClick: NodeMouseHandler = useCallback(
     (_event, node) => {
       if (node.id.startsWith("__port__")) return;
+      if (node.data?.nodeType === 'sticky-note') return;
       navigateInto(node.id, node.data?.name as string);
     },
     [navigateInto],
@@ -318,6 +320,7 @@ function CanvasInner({ projectId }: CanvasProps) {
         type: "node",
         id: node.id,
         name: node.data?.name as string,
+        nodeType: node.data?.nodeType as string,
         x: event.clientX,
         y: event.clientY,
       });
@@ -439,6 +442,7 @@ function CanvasInner({ projectId }: CanvasProps) {
               environment: "#6366f1",
               infrastructure: "#f59e0b",
               default: "#94a3b8",
+              "sticky-note": "#fef08a",
             };
             return (
               colors[(node.data?.nodeType as string) ?? "default"] ?? "#94a3b8"

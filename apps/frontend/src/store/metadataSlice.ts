@@ -5,7 +5,7 @@ import { dbNodeToFlowNode } from '../lib/transforms';
 import type { StoreState } from './index';
 
 export type ContextMenuTarget =
-  | { type: 'node'; id: string; name: string; x: number; y: number }
+  | { type: 'node'; id: string; name: string; nodeType: string; x: number; y: number }
   | { type: 'edge'; id: string; label: string | null; x: number; y: number }
   | { type: 'pane'; x: number; y: number; canvasX: number; canvasY: number };
 

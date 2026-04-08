@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
-import { Plus, ZoomIn, ZoomOut, Maximize, Sparkles } from 'lucide-react';
+import { Plus, ZoomIn, ZoomOut, Maximize, Sparkles, StickyNote } from 'lucide-react';
 import { useStore } from '../../store';
 import { NodeTypePicker } from '../ui/NodeTypePicker';
 import { AIGenerateModal } from './AIGenerateModal';
@@ -15,6 +15,23 @@ export function CanvasToolbar() {
   const currentParentId = useStore((s) => s.currentParentId);
   const addNode = useStore((s) => s.addNode);
   const nodes = useStore((s) => s.nodes);
+
+  const handleAddStickyNote = () => {
+    if (!projectId) return;
+    const offsetX = (nodes.length % 5) * 220;
+    const offsetY = Math.floor(nodes.length / 5) * 180;
+    addNode(projectId, {
+      name: 'Note',
+      nodeType: 'sticky-note',
+      parentId: currentParentId,
+      positionX: 100 + offsetX,
+      positionY: 100 + offsetY,
+      width: 200,
+      height: 200,
+      description: '',
+      metadata: { customFields: [], links: [], tags: [], bgColor: '#fef08a' },
+    });
+  };
 
   const handleAddNode = () => {
     if (!projectId || !newNodeName.trim()) return;
@@ -49,6 +66,13 @@ export function CanvasToolbar() {
           title="Generate with AI"
         >
           <Sparkles className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => { setShowAddMenu(false); handleAddStickyNote(); }}
+          className="p-2 hover:bg-yellow-50 rounded-md transition-colors text-yellow-600"
+          title="Add sticky note"
+        >
+          <StickyNote className="w-4 h-4" />
         </button>
         <div className="w-px bg-slate-200" />
         <button

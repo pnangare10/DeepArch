@@ -4,7 +4,7 @@ import type { ArchNode, ArchEdge } from '@deeparch/shared';
 export function dbNodeToFlowNode(node: ArchNode): FlowNode {
   return {
     id: node.id,
-    type: 'archNode',
+    type: node.nodeType === 'sticky-note' ? 'stickyNote' : 'archNode',
     position: { x: node.positionX, y: node.positionY },
     data: {
       name: node.name,

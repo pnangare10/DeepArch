@@ -8,6 +8,7 @@ export const NODE_TYPES = {
   FRONTEND: 'frontend',
   ENVIRONMENT: 'environment',
   INFRASTRUCTURE: 'infrastructure',
+  STICKY_NOTE: 'sticky-note',
 } as const;
 
 export type NodeType = (typeof NODE_TYPES)[keyof typeof NODE_TYPES];

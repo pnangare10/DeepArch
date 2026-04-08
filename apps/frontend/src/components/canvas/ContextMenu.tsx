@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Trash2, PlusSquare, Tag, Copy, Clipboard, FolderInput, Scissors } from 'lucide-react';
+import { Trash2, PlusSquare, Tag, Copy, Clipboard, FolderInput, Scissors, StickyNote } from 'lucide-react';
 import type { ContextMenuTarget } from '../../store/metadataSlice';
 import { useStore } from '../../store';
 import { MoveNodeModal } from './MoveNodeModal';
@@ -69,6 +69,22 @@ export function ContextMenu({ menu, projectId, onClose }: ContextMenuProps) {
     onClose();
   };
 
+  const handleAddStickyNoteAtPaneClick = async () => {
+    if (menu.type !== 'pane') return;
+    await addNode(projectId, {
+      name: 'Note',
+      nodeType: 'sticky-note',
+      positionX: Math.round(menu.canvasX),
+      positionY: Math.round(menu.canvasY),
+      parentId: currentParentId,
+      width: 200,
+      height: 200,
+      description: '',
+      metadata: { customFields: [], links: [], tags: [], bgColor: '#fef08a' },
+    });
+    onClose();
+  };
+
   const handlePasteHere = async () => {
     if (menu.type !== 'pane' || !clipboard || clipboard.length === 0) return;
     // Paste at click position relative to first clipboard node
@@ -125,11 +141,15 @@ export function ContextMenu({ menu, projectId, onClose }: ContextMenuProps) {
     >
       {menu.type === 'node' && (
         <>
-          <div onClick={handleDrillInto} className={itemClass}>
-            <PlusSquare className="w-3.5 h-3.5 text-slate-400" />
-            Open / drill in
-          </div>
-          <div className="h-px bg-slate-100 my-1" />
+          {menu.nodeType !== 'sticky-note' && (
+            <>
+              <div onClick={handleDrillInto} className={itemClass}>
+                <PlusSquare className="w-3.5 h-3.5 text-slate-400" />
+                Open / drill in
+              </div>
+              <div className="h-px bg-slate-100 my-1" />
+            </>
+          )}
           <div onClick={() => { cutNode(projectId, menu.id); onClose(); }} className={itemClass}>
             <Scissors className="w-3.5 h-3.5 text-slate-400" />
             Cut
@@ -195,6 +215,10 @@ export function ContextMenu({ menu, projectId, onClose }: ContextMenuProps) {
           <div onClick={handleAddNodeAtPaneClick} className={itemClass}>
             <PlusSquare className="w-3.5 h-3.5 text-slate-400" />
             Add node here
+          </div>
+          <div onClick={handleAddStickyNoteAtPaneClick} className={itemClass}>
+            <StickyNote className="w-3.5 h-3.5 text-yellow-500" />
+            Add sticky note
           </div>
           {clipboard && clipboard.length > 0 && (
             <div onClick={handlePasteHere} className={itemClass}>
