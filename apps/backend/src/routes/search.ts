@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import { SearchService } from '../services/searchService.js';
 import { PrismaNodeRepository } from '../repositories/prisma/PrismaNodeRepository.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
@@ -8,7 +8,7 @@ const service = new SearchService(new PrismaNodeRepository());
 
 router.use(authMiddleware);
 
-router.get('/:projectId/search', async (req, res, next) => {
+router.get('/:projectId/search', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const query = req.query.q as string;
     if (!query) {
