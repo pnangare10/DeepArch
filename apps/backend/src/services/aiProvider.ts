@@ -102,28 +102,148 @@ export function buildPrompts(
   validNodeTypes: string,
 ): { system: string; user: string } {
   return {
-    system: `You are an architecture diagram generator. Given a description, produce a JSON object representing the architecture.
+    system: `You are an expert software architecture analyst and diagram designer. Your job is to read technical documentation and produce architecture diagrams that are visually clean, easy to read, and structurally sound.
+
+A good diagram has:
+- A clear left-to-right primary flow (the path a typical request takes)
+- No more than 4 nodes per vertical column
+- Balanced columns so the diagram doesn't look lopsided
+- Meaningful edge labels that explain what flows between components
+- Metadata (ports, env vars, URLs) captured in node properties
+
+You MUST follow the multi-step process described in the user message before generating JSON.
+
 Return ONLY valid JSON — no markdown fences, no explanation text, just the raw JSON object.`,
-    user: `Generate an architecture diagram for: ${prompt}
+    user: `Analyze the following documentation and produce a layout-optimized architecture diagram by following these steps in order.
+
+════════════════════════════════════════════
+DOCUMENTATION TO ANALYZE:
+════════════════════════════════════════════
+${prompt}
+════════════════════════════════════════════
+
+Follow ALL steps below before generating JSON:
+
+───────────────────────────────────────────
+STEP 1 — IDENTIFY THE PRIMARY FLOW (the spine)
+───────────────────────────────────────────
+Find the single most important request path through the system: from entry point to final storage.
+This spine must have 4–8 nodes in a strict left-to-right sequence.
+
+Examples of good spines:
+  Web app:  Client → Load Balancer → API Gateway → App Service → PostgreSQL
+  Pipeline: Scheduler → Ingest API → Message Queue → Worker → Database
+  Microservices: Browser → CDN → API Gateway → Auth Service → Order Service → MySQL
+
+Write out your spine as: "spine: [component1] → [component2] → ..."
+
+───────────────────────────────────────────
+STEP 2 — DESIGN LAYER GROUPS (density limit: max 4 nodes per layer)
+───────────────────────────────────────────
+Assign a layer number (0, 1, 2, ...) to every component you plan to include.
+Layer 0 is leftmost (clients, external systems), layers increase moving right (deeper in the stack).
+
+Rules:
+- NEVER put more than 4 nodes in the same layer. If a layer would overflow, either:
+  a) Move secondary/support services to the adjacent layer (±1), OR
+  b) Merge highly similar services into one combined node
+- The spine components should each occupy their own layer in sequence
+- Supporting services (caches, config, monitoring) go in the same layer as the component they primarily serve
+- Sticky notes can share a layer with the component they annotate — they don't count toward the 4-node limit
+
+Write out your layer plan as:
+  Layer 0: [node names] (count: N)
+  Layer 1: [node names] (count: N)
+  ...
+
+───────────────────────────────────────────
+STEP 3 — SELECT MAX 3 STICKY NOTES FOR KEY WARNINGS
+───────────────────────────────────────────
+From the documentation, pick at most 3 things a developer must know that are NOT system components:
+  - Warnings, known issues, or unexpected behaviors
+  - Important config values or environment quirks
+  - Architectural decisions with non-obvious consequences
+
+Assign each sticky note to the layer of its most relevant component.
+Color guide:
+  "#fed7aa" = warnings / known issues / risks
+  "#fef08a" = general notes / context / decisions
+  "#bbf7d0" = important architectural choices
+  "#bfdbfe" = external documentation references
+
+───────────────────────────────────────────
+STEP 4 — PLAN EDGES (primary flow first, then secondary)
+───────────────────────────────────────────
+List the edges in priority order:
+  1. Spine edges (most important — these form the main flow)
+  2. Secondary connections (caches, fallbacks, sidecars)
+  3. Background/async connections (monitoring, logging, shadow systems)
+
+For each edge choose:
+  edgeType: "http" (REST/HTTP calls), "event" (queue/pub-sub), "data-flow" (pipeline/ETL), "dependency" (build-time), "default" (other)
+  label: short description of what flows (e.g. "POST /ingest", "Kafka events", "SQL read")
+
+Limit: max 40 edges. Omit minor or implied connections if you're approaching the limit.
+
+───────────────────────────────────────────
+STEP 5 — GENERATE JSON
+───────────────────────────────────────────
+Now produce the JSON. The "plan" field documents your reasoning (layers + spine).
+The "nodes" and "edges" fields implement the plan.
 
 Return JSON with this exact shape:
 {
+  "plan": {
+    "spine": ["n1", "n2", "n3", "n4"],
+    "layer_summary": {
+      "0": "2 nodes: external entry points",
+      "1": "2 nodes: edge / gateway layer",
+      "2": "3 nodes: processing + async ingress",
+      "3": "2 nodes: storage"
+    }
+  },
   "nodes": [
-    { "tempId": "n1", "name": "string", "nodeType": "${validNodeTypes}", "description": "string", "layer": 0 }
+    {
+      "tempId": "n1",
+      "name": "Edge Gateway",
+      "nodeType": "${validNodeTypes}",
+      "description": "Main ingress point handling TLS termination and routing.",
+      "layer": 1,
+      "metadata": {
+        "customFields": [
+          { "key": "Port", "value": "8081" },
+          { "key": "TLS Port", "value": "8443" },
+          { "key": "EDGE_SSL_MODE", "value": "env flag, sometimes overridden at runtime" }
+        ],
+        "links": [],
+        "tags": ["gateway", "TLS"]
+      }
+    }
   ],
   "edges": [
-    { "sourceId": "n1", "targetId": "n2", "label": "optional string" }
+    {
+      "sourceId": "n1",
+      "targetId": "n2",
+      "label": "route to /v1/ingest",
+      "edgeType": "http"
+    }
   ]
 }
 
-Rules:
-- layer starts at 0 for the leftmost/first tier, increment for each downstream tier
-- tempId must be unique strings like "n1", "n2", "n3"
-- edges reference tempId values (not names)
-- max 20 nodes, max 30 edges
+FINAL RULES:
+- max 30 nodes total (sticky notes included)
+- max 40 edges
 - nodeType must be exactly one of: ${validNodeTypes}
-- keep names short (1-4 words)
-- description is optional but helpful (1 sentence max)`,
+  ("service" = APIs/microservices, "database" = any DB or cache, "queue" = message brokers,
+   "gateway" = API gateways/reverse proxies, "load-balancer", "frontend" = UI/web apps,
+   "environment" = cloud namespaces, "infrastructure" = CI/CD/monitoring/storage)
+- names: 1–4 words max
+- descriptions: 1 sentence
+- tempIds: unique strings "n1", "n2", ...
+- metadata.customFields: port numbers, env var names/values, config values, versions
+- metadata.links: every URL found in the documentation
+- metadata.tags: languages, frameworks, cloud providers, protocols
+- DO NOT emit markdown, explanation, or anything outside the JSON object`,
   };
 }
 

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Layers, Upload, LogOut } from 'lucide-react';
 import { projectsApi } from '../api/projects';
 import { ProjectCard } from '../components/project/ProjectCard';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { useStore } from '../store';
 import { useToast } from '../components/ui/Toast';
 import type { Project } from '@deeparch/shared';
@@ -72,13 +73,13 @@ export function ProjectListPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-8 py-4">
+      <header className="bg-background border-b border-border px-8 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Layers className="w-6 h-6 text-blue-600" />
-            <span className="text-xl font-bold text-slate-800">DeepArch</span>
+            <span className="text-xl font-bold text-foreground">DeepArch</span>
           </div>
           <div className="flex items-center gap-3">
             <input
@@ -91,7 +92,7 @@ export function ProjectListPage() {
             <button
               onClick={() => importInputRef.current?.click()}
               disabled={isImporting}
-              className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 border border-border text-foreground text-sm font-medium rounded-lg hover:bg-accent disabled:opacity-50 transition-colors"
             >
               <Upload className="w-4 h-4" />
               {isImporting ? 'Importing...' : 'Import'}
@@ -104,29 +105,30 @@ export function ProjectListPage() {
               New Project
             </button>
             {user && (
-              <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
-                <span className="text-sm text-slate-600">{user.name}</span>
+              <div className="flex items-center gap-2 pl-3 border-l border-border">
+                <span className="text-sm text-muted-foreground">{user.name}</span>
                 <button
                   onClick={() => { logout(); navigate('/login'); }}
-                  className="flex items-center gap-1 px-3 py-2 text-slate-500 hover:text-slate-800 text-sm rounded-lg hover:bg-slate-100 transition-colors"
+                  className="flex items-center gap-1 px-3 py-2 text-muted-foreground hover:text-foreground text-sm rounded-lg hover:bg-accent transition-colors"
                   title="Sign out"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
               </div>
             )}
+            <ThemeToggle />
           </div>
         </div>
       </header>
 
       {/* Main */}
       <main className="max-w-5xl mx-auto px-8 py-8">
-        <h1 className="text-2xl font-bold text-slate-800 mb-6">Projects</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-6">Projects</h1>
 
         {/* New project form */}
         {showNew && (
-          <div className="mb-6 bg-white border border-blue-200 rounded-xl p-5 shadow-sm">
-            <h2 className="font-semibold text-slate-800 mb-3">New Project</h2>
+          <div className="mb-6 bg-background border border-border rounded-xl p-5 shadow-sm">
+            <h2 className="font-semibold text-foreground mb-3">New Project</h2>
             <input
               type="text"
               value={newName}
@@ -134,14 +136,14 @@ export function ProjectListPage() {
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               placeholder="Project name"
               autoFocus
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-border rounded-md mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background text-foreground placeholder:text-muted-foreground"
             />
             <input
               type="text"
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
               placeholder="Description (optional)"
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-border rounded-md mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background text-foreground placeholder:text-muted-foreground"
             />
             <div className="flex gap-2">
               <button
@@ -162,11 +164,11 @@ export function ProjectListPage() {
         )}
 
         {isLoading && (
-          <div className="text-slate-400 text-sm">Loading projects...</div>
+          <div className="text-muted-foreground text-sm">Loading projects...</div>
         )}
 
         {!isLoading && projects.length === 0 && !showNew && (
-          <div className="text-center py-16 text-slate-400">
+          <div className="text-center py-16 text-muted-foreground">
             <Layers className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="text-lg font-medium mb-1">No projects yet</p>
             <p className="text-sm">Create your first architecture diagram</p>

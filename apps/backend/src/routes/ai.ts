@@ -29,7 +29,7 @@ router.post('/:projectId/ai/generate', async (req, res, next) => {
     // Validate prompt
     const prompt = (body.prompt ?? '').trim();
     if (!prompt) throw new AppError(400, 'Prompt is required');
-    if (prompt.length > 2000) throw new AppError(400, 'Prompt must be 2000 characters or fewer');
+    if (prompt.length > 10000) throw new AppError(400, 'Prompt must be 10,000 characters or fewer');
 
     const parentId = body.parentId ?? null;
 
@@ -82,6 +82,7 @@ router.post('/:projectId/ai/generate', async (req, res, next) => {
     const tempIdToRealId = new Map<string, string>();
     for (const nodeDraft of schema.nodes) {
       const pos = positions.get(nodeDraft.tempId) ?? { x: 100, y: 100 };
+      const isStickyNote = nodeDraft.nodeType === 'sticky-note';
       const created = await nodeRepo.create(projectId, {
         name: nodeDraft.name,
         nodeType: nodeDraft.nodeType,
@@ -89,9 +90,14 @@ router.post('/:projectId/ai/generate', async (req, res, next) => {
         parentId,
         positionX: pos.x,
         positionY: pos.y,
-        width: 200,
-        height: 80,
-        metadata: {},
+        width: isStickyNote ? 250 : 200,
+        height: isStickyNote ? 150 : 80,
+        metadata: {
+          customFields: nodeDraft.metadata?.customFields ?? [],
+          links: nodeDraft.metadata?.links ?? [],
+          tags: nodeDraft.metadata?.tags ?? [],
+          ...(nodeDraft.metadata?.bgColor ? { bgColor: nodeDraft.metadata.bgColor } : {}),
+        },
       });
       tempIdToRealId.set(nodeDraft.tempId, created.id);
       broadcast(projectId, 'node:created', { node: created });
@@ -112,6 +118,7 @@ router.post('/:projectId/ai/generate', async (req, res, next) => {
           targetId,
           parentId,
           label: edgeDraft.label,
+          edgeType: edgeDraft.edgeType,
           sourceHandle: handles?.sourceHandle,
           targetHandle: handles?.targetHandle,
         });

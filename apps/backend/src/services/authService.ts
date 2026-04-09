@@ -7,8 +7,7 @@ import { AppError } from '../middleware/errorHandler.js';
 const BCRYPT_ROUNDS = 10;
 
 function signToken(userId: string, email: string): string {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error('JWT_SECRET is not set');
+  const secret = process.env.JWT_SECRET || 'deeparch-dev-secret-do-not-use-in-production';
   return jwt.sign({ userId, email }, secret, { expiresIn: '7d' });
 }
 

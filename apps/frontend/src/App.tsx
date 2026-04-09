@@ -5,6 +5,7 @@ import { EditorPage } from './pages/EditorPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { ThemeProvider } from './components/ThemeProvider';
 import { useStore } from './store';
 import { ApiError } from './api/client';
 
@@ -31,25 +32,27 @@ export function App() {
   }, [logout, navigate]);
 
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <ProjectListPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/project/:projectId"
-        element={
-          <ProtectedRoute>
-            <EditorPage />
-          </ProtectedRoute>
-        }
-      />
-    </Routes>
+    <ThemeProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <ProjectListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/project/:projectId"
+          element={
+            <ProtectedRoute>
+              <EditorPage />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </ThemeProvider>
   );
 }

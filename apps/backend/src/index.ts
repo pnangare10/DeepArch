@@ -10,6 +10,7 @@ import authRoutes from './routes/auth.js';
 import membersRouter from './routes/members.js';
 import commentsRouter from './routes/comments.js';
 import aiRouter from './routes/ai.js';
+import usersRouter from './routes/users.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { initSocket, setIo } from './socket/index.js';
 
@@ -29,10 +30,17 @@ app.use('/api/projects', searchRoutes);
 app.use('/api/projects/:projectId/members', membersRouter);
 app.use('/api/projects/:projectId', commentsRouter);
 app.use('/api/projects', aiRouter);
+app.use('/api/users', usersRouter);
 
 // Health check
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' });
+app.get('/api/health', async (_req, res) => {
+  try {
+    const { default: prisma } = await import('./utils/db.js');
+    await prisma.$queryRawUnsafe('SELECT 1');
+    res.json({ status: 'ok', db: 'connected' });
+  } catch (e: any) {
+    res.json({ status: 'ok', db: `error: ${e.message}` });
+  }
 });
 
 // Error handler

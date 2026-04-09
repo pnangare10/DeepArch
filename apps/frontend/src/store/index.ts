@@ -5,6 +5,7 @@ import { createSearchSlice, type SearchSlice } from './searchSlice';
 import { createMetadataSlice, type MetadataSlice } from './metadataSlice';
 import { createAuthSlice, type AuthSlice } from './authSlice';
 import { createCollaborationSlice, type CollaborationSlice } from './collaborationSlice';
+import { createThemeSlice, type ThemeSlice } from './themeSlice';
 import type { Comment } from '@deeparch/shared';
 
 // Comment event inbox — set by socket handlers, consumed by CommentSection
@@ -15,7 +16,7 @@ export interface CommentEventState {
   clearCommentEvents: () => void;
 }
 
-export type StoreState = NavigationSlice & CanvasSlice & SearchSlice & MetadataSlice & AuthSlice & CollaborationSlice & CommentEventState;
+export type StoreState = NavigationSlice & CanvasSlice & SearchSlice & MetadataSlice & AuthSlice & CollaborationSlice & ThemeSlice & CommentEventState;
 
 export const useStore = create<StoreState>()((...a) => ({
   ...createNavigationSlice(...a),
@@ -24,6 +25,7 @@ export const useStore = create<StoreState>()((...a) => ({
   ...createMetadataSlice(...a),
   ...createAuthSlice(...a),
   ...createCollaborationSlice(...a),
+  ...createThemeSlice(a[0], a[1]),
   incomingComment: null,
   incomingCommentUpdate: null,
   incomingCommentDelete: null,

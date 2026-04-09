@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
 import type { ICommentRepository, CommentRecord } from '../interfaces/ICommentRepository.js';
-
-const prisma = new PrismaClient();
+import prisma from '../../utils/db.js';
 
 function toRecord(c: {
   id: string;

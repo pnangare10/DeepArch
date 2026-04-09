@@ -52,46 +52,46 @@ export function CanvasToolbar() {
 
   return (
     <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-      <div className="flex gap-1 bg-white rounded-lg shadow-md border border-slate-200 p-1">
+      <div className="flex gap-1 bg-background rounded-lg shadow-md border border-border p-1">
         <button
           onClick={() => setShowAddMenu(!showAddMenu)}
-          className="p-2 hover:bg-slate-100 rounded-md transition-colors"
+          className="p-2 hover:bg-accent rounded-md transition-colors text-foreground"
           title="Add node"
         >
           <Plus className="w-4 h-4" />
         </button>
         <button
           onClick={() => { setShowAddMenu(false); setShowAIModal(true); }}
-          className="p-2 hover:bg-violet-50 rounded-md transition-colors text-violet-600"
+          className="p-2 hover:bg-violet-100 dark:hover:bg-violet-900/30 rounded-md transition-colors text-violet-600 dark:text-violet-400"
           title="Generate with AI"
         >
           <Sparkles className="w-4 h-4" />
         </button>
         <button
           onClick={() => { setShowAddMenu(false); handleAddStickyNote(); }}
-          className="p-2 hover:bg-yellow-50 rounded-md transition-colors text-yellow-600"
+          className="p-2 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 rounded-md transition-colors text-yellow-600 dark:text-yellow-400"
           title="Add sticky note"
         >
           <StickyNote className="w-4 h-4" />
         </button>
-        <div className="w-px bg-slate-200" />
+        <div className="w-px bg-border" />
         <button
           onClick={() => zoomIn()}
-          className="p-2 hover:bg-slate-100 rounded-md transition-colors"
+          className="p-2 hover:bg-accent rounded-md transition-colors text-foreground"
           title="Zoom in"
         >
           <ZoomIn className="w-4 h-4" />
         </button>
         <button
           onClick={() => zoomOut()}
-          className="p-2 hover:bg-slate-100 rounded-md transition-colors"
+          className="p-2 hover:bg-accent rounded-md transition-colors text-foreground"
           title="Zoom out"
         >
           <ZoomOut className="w-4 h-4" />
         </button>
         <button
           onClick={() => fitView({ padding: 0.2 })}
-          className="p-2 hover:bg-slate-100 rounded-md transition-colors"
+          className="p-2 hover:bg-accent rounded-md transition-colors text-foreground"
           title="Fit view"
         >
           <Maximize className="w-4 h-4" />
@@ -103,14 +103,14 @@ export function CanvasToolbar() {
       )}
 
       {showAddMenu && (
-        <div className="bg-white rounded-lg shadow-md border border-slate-200 p-3 w-56">
+        <div className="bg-background rounded-lg shadow-md border border-border p-3 w-56">
           <input
             type="text"
             value={newNodeName}
             onChange={(e) => setNewNodeName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAddNode()}
             placeholder="Node name..."
-            className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-md mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-2 py-1.5 text-sm border border-border rounded-md mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background text-foreground placeholder:text-muted-foreground"
             autoFocus
           />
           <NodeTypePicker

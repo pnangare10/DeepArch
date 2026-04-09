@@ -1,8 +1,6 @@
-import { PrismaClient } from '@prisma/client';
 import type { ProjectRole } from '@deeparch/shared';
 import type { IMemberRepository, MemberRecord } from '../interfaces/IMemberRepository.js';
-
-const prisma = new PrismaClient();
+import prisma from '../../utils/db.js';
 
 function toRecord(m: {
   id: string;

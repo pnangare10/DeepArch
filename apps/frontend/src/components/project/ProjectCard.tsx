@@ -25,12 +25,12 @@ export function ProjectCard({ project, onOpen, onDelete }: ProjectCardProps) {
   return (
     <div
       onClick={() => onOpen(project.id)}
-      className="bg-white border border-slate-200 rounded-xl p-5 cursor-pointer hover:border-blue-300 hover:shadow-md transition-all group"
+      className="bg-background border border-border rounded-xl p-5 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all group"
     >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
+            <h3 className="font-semibold text-foreground truncate group-hover:text-blue-500 transition-colors">
               {project.name}
             </h3>
             {project.role && (
@@ -40,13 +40,13 @@ export function ProjectCard({ project, onOpen, onDelete }: ProjectCardProps) {
             )}
           </div>
           {project.description && (
-            <p className="text-sm text-slate-500 mt-1 line-clamp-2">{project.description}</p>
+            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{project.description}</p>
           )}
         </div>
         {!project.role && (
           <button
             onClick={handleDelete}
-            className="ml-3 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+            className="ml-3 text-muted-foreground/40 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
             title="Delete project"
           >
             <Trash2 className="w-4 h-4" />
@@ -54,7 +54,7 @@ export function ProjectCard({ project, onOpen, onDelete }: ProjectCardProps) {
         )}
       </div>
 
-      <div className="mt-4 flex items-center gap-4 text-xs text-slate-400">
+      <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <Layers className="w-3.5 h-3.5" />
           {project.nodeCount ?? 0} node{project.nodeCount !== 1 ? 's' : ''}

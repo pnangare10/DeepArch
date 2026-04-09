@@ -14,8 +14,7 @@ export function authMiddleware(req: Request, _res: Response, next: NextFunction)
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return next(new AppError(401, 'Unauthorized'));
   try {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) throw new Error('JWT_SECRET is not set');
+    const secret = process.env.JWT_SECRET || 'deeparch-dev-secret-do-not-use-in-production';
     req.user = jwt.verify(token, secret) as { userId: string; email: string };
     next();
   } catch {

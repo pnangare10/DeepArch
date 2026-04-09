@@ -1,11 +1,10 @@
-import { PrismaClient } from '@prisma/client';
 import type { ProjectRole } from '@deeparch/shared';
 import { ROLE_HIERARCHY } from '@deeparch/shared';
 import { PrismaMemberRepository } from '../repositories/prisma/PrismaMemberRepository.js';
 import type { MemberRecord } from '../repositories/interfaces/IMemberRepository.js';
 import { AppError } from '../middleware/errorHandler.js';
+import prisma from '../utils/db.js';
 
-const prisma = new PrismaClient();
 const repo = new PrismaMemberRepository();
 
 export function hasMinRole(userRole: ProjectRole, minRole: ProjectRole): boolean {

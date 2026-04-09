@@ -2,6 +2,8 @@ import type { StateCreator } from 'zustand';
 import type { StoreState } from './index';
 import type { User, LoginDTO, RegisterDTO } from '@deeparch/shared';
 import { authApi } from '../api/auth';
+import { useThemeStore } from './themeSlice';
+import type { Theme } from './themeSlice';
 
 const TOKEN_KEY = 'deeparch_token';
 const USER_KEY = 'deeparch_user';
@@ -48,6 +50,9 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
     localStorage.setItem(TOKEN_KEY, response.token);
     localStorage.setItem(USER_KEY, JSON.stringify(response.user));
     set({ user: response.user, token: response.token });
+    if (response.user.themePreference) {
+      useThemeStore.getState().setTheme(response.user.themePreference as Theme);
+    }
   },
 
   register: async (data) => {
@@ -58,6 +63,9 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
     localStorage.setItem(TOKEN_KEY, response.token);
     localStorage.setItem(USER_KEY, JSON.stringify(response.user));
     set({ user: response.user, token: response.token });
+    if (response.user.themePreference) {
+      useThemeStore.getState().setTheme(response.user.themePreference as Theme);
+    }
   },
 
   logout: () => {

@@ -2,10 +2,15 @@ import type { AINodeDraft, AIEdgeDraft } from '@deeparch/shared';
 
 const NODE_W = 200;
 const NODE_H = 80;
-const COL_GAP = 120;   // horizontal gap between columns
-const ROW_GAP = 60;    // vertical gap between nodes in the same column
-const START_X = 80;
-const START_Y = 80;
+const NODE_STICKY_H = 150; // sticky notes are taller
+const COL_GAP = 180;   // horizontal gap between columns
+const ROW_GAP = 80;    // vertical gap between nodes in the same column
+const START_X = 100;
+const START_Y = 100;
+
+function nodeHeight(n: AINodeDraft): number {
+  return n.nodeType === 'sticky-note' ? NODE_STICKY_H : NODE_H;
+}
 
 export interface LayoutResult {
   positions: Map<string, { x: number; y: number }>;
@@ -24,10 +29,11 @@ export function computeLayout(nodes: AINodeDraft[], edges: AIEdgeDraft[]): Layou
 
   const layers = [...byLayer.keys()].sort((a, b) => a - b);
 
-  // Compute column height so we can vertically center each column
+  // Compute column height using actual per-node heights (sticky notes are taller)
   const colHeights = layers.map((l) => {
-    const count = byLayer.get(l)!.length;
-    return count * NODE_H + (count - 1) * ROW_GAP;
+    const colNodes = byLayer.get(l)!;
+    return colNodes.reduce((sum, n, i) =>
+      sum + nodeHeight(n) + (i < colNodes.length - 1 ? ROW_GAP : 0), 0);
   });
   const maxColHeight = Math.max(...colHeights, NODE_H);
 
@@ -38,11 +44,10 @@ export function computeLayout(nodes: AINodeDraft[], edges: AIEdgeDraft[]): Layou
     const colH = colHeights[col];
     const topOffset = (maxColHeight - colH) / 2;
     const x = START_X + col * (NODE_W + COL_GAP);
-    for (let row = 0; row < layerNodes.length; row++) {
-      positions.set(layerNodes[row].tempId, {
-        x,
-        y: START_Y + topOffset + row * (NODE_H + ROW_GAP),
-      });
+    let yOffset = START_Y + topOffset;
+    for (const node of layerNodes) {
+      positions.set(node.tempId, { x, y: yOffset });
+      yOffset += nodeHeight(node) + ROW_GAP;
     }
   }
 
@@ -58,10 +63,15 @@ export function computeLayout(nodes: AINodeDraft[], edges: AIEdgeDraft[]): Layou
     const srcLayer = tempIdToLayer.get(edge.sourceId) ?? 0;
     const tgtLayer = tempIdToLayer.get(edge.targetId) ?? 0;
 
+    const srcNode = nodes.find((n) => n.tempId === edge.sourceId);
+    const tgtNode = nodes.find((n) => n.tempId === edge.targetId);
+    const srcH = srcNode ? nodeHeight(srcNode) : NODE_H;
+    const tgtH = tgtNode ? nodeHeight(tgtNode) : NODE_H;
+
     const srcCX = sp.x + NODE_W / 2;
     const tgtCX = tp.x + NODE_W / 2;
-    const srcCY = sp.y + NODE_H / 2;
-    const tgtCY = tp.y + NODE_H / 2;
+    const srcCY = sp.y + srcH / 2;
+    const tgtCY = tp.y + tgtH / 2;
 
     const dx = tgtCX - srcCX;
     const dy = tgtCY - srcCY;
