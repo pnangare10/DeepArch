@@ -13,10 +13,12 @@
     "build": "npm run build -w packages/shared && npm run build -w apps/backend && npm run build -w apps/frontend",
     "lint": "npm run lint --workspaces --if-present",
     "debate": "tsx scripts/debate.ts",
-    "debate:team": "tsx scripts/debate-team.ts"
+    "debate:team": "tsx scripts/debate-team.ts",
+    "debate:team:gemini": "tsx scripts/debate-team-gemini.ts"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
+    "@google/generative-ai": "^0.24.1",
     "concurrently": "^9.1.0",
     "typescript": "^5.7.0"
   }
