@@ -22,11 +22,16 @@ function resolveDbUrl(): string {
 
 const prisma = new PrismaClient({ datasourceUrl: resolveDbUrl() });
 
-// Add themePreference column if it doesn't exist (safe to run on every startup)
-prisma.$executeRawUnsafe(
+// Add missing columns if they don't exist (safe to run on every startup)
+const startupMigrations = [
   `ALTER TABLE User ADD COLUMN themePreference TEXT DEFAULT 'system'`,
-).catch(() => {
-  // Silently ignore — column already exists
-});
+  `ALTER TABLE User ADD COLUMN resetTokenHash TEXT`,
+  `ALTER TABLE User ADD COLUMN resetTokenExpiresAt DATETIME`,
+  `ALTER TABLE User ADD COLUMN failedLoginAttempts INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE User ADD COLUMN lockedUntil DATETIME`,
+];
+for (const sql of startupMigrations) {
+  prisma.$executeRawUnsafe(sql).catch(() => {});
+}
 
 export default prisma;

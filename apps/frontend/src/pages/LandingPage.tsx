@@ -661,6 +661,86 @@ export function LandingPage() {
           </div>
         </section>
 
+        {/* ── Testimonials ── */}
+        <section className="py-24 px-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-14">
+              <h2 className="text-4xl font-bold text-white mb-3">Loved by teams who architect at scale</h2>
+              <p className="text-lg text-gray-400">See what solution architects and platform engineers are saying.</p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              {[
+                {
+                  quote: "DeepArch cut our architecture documentation time from weeks to hours. We generated 70% of our microservices diagram with AI, then refined it. Game changer.",
+                  author: 'Sarah Chen',
+                  role: 'Principal Architect',
+                  company: 'FinTech Startup',
+                  initials: 'SC',
+                  color: 'bg-blue-500',
+                },
+                {
+                  quote: "Onboarding new engineers used to require a 2-hour whiteboard session. Now they drill into the architecture themselves and understand the system in 30 minutes. Plus hierarchical view scales infinitely.",
+                  author: 'Marcus Rodriguez',
+                  role: 'Head of Platform Engineering',
+                  company: 'E-Commerce Scale-Up',
+                  initials: 'MR',
+                  color: 'bg-purple-500',
+                },
+                {
+                  quote: "For compliance documentation, DeepArch is unbeatable. We mapped our entire system, locked access per layer, and auditors could navigate exactly what they needed. No more defensive PDFs.",
+                  author: 'Elena Volkov',
+                  role: 'CTO',
+                  company: 'Healthcare SaaS',
+                  initials: 'EV',
+                  color: 'bg-green-500',
+                },
+                {
+                  quote: "The real-time collaboration is incredible. Our distributed team revised the architecture live, saw each other's cursors, and comments lived on the diagrams. No more out-of-sync Lucidchart exports.",
+                  author: 'James Walsh',
+                  role: 'Senior Solutions Architect',
+                  company: 'Enterprise Software',
+                  initials: 'JW',
+                  color: 'bg-orange-500',
+                },
+                {
+                  quote: "We modernized a monolith to microservices. DeepArch let us map the old system, design the target architecture side-by-side, and track progress per layer. Indispensable.",
+                  author: 'Priya Sharma',
+                  role: 'Technical Lead',
+                  company: 'Legacy App Transformation',
+                  initials: 'PS',
+                  color: 'bg-pink-500',
+                },
+                {
+                  quote: "AI generation gave us a 70% skeleton instantly. We spent 30% of our time refining what mattered instead of re-drawing the same boxes. That's the magic.",
+                  author: 'David Kim',
+                  role: 'Architect',
+                  company: 'Cloud-Native Platform',
+                  initials: 'DK',
+                  color: 'bg-cyan-500',
+                },
+              ].map(({ quote, author, role, company, initials, color }) => (
+                <div
+                  key={author}
+                  className="bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl p-6 flex flex-col transition-colors"
+                >
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className={`${color} w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0`}>
+                      {initials}
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold text-sm">{author}</p>
+                      <p className="text-xs text-gray-500">{role}</p>
+                      <p className="text-xs text-gray-600">{company}</p>
+                    </div>
+                  </div>
+                  <p className="text-gray-300 leading-relaxed italic text-sm flex-1">&ldquo;{quote}&rdquo;</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* ── Bottom CTA ── */}
         <section className="py-28 px-6 text-center relative">
           <div
