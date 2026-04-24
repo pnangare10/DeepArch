@@ -3,6 +3,6 @@ import { useStore } from '../../store';
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useStore((s) => s.token);
-  if (!token) return <Navigate to="/login" replace />;
+  if (!token) return <Navigate to="/landing" replace />;
   return <>{children}</>;
 }

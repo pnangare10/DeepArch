@@ -7,7 +7,9 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@deeparch/shared": ["../../packages/shared/dist"],
+      "@deeparch/shared/*": ["../../packages/shared/dist/*"]
     },
     "types": ["vite/client"]
   },

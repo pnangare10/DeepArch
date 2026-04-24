@@ -38,6 +38,15 @@ export class NodeService {
 
   async batchUpdatePositions(updates: BatchPositionUpdate[]): Promise<void> {
     if (!updates.length) return;
-    await this.repo.batchUpdatePositions(updates);
+    const validUpdates: BatchPositionUpdate[] = [];
+    for (const update of updates) {
+      const node = await this.repo.findById(update.id);
+      if (node) {
+        validUpdates.push(update);
+      }
+    }
+    if (validUpdates.length > 0) {
+      await this.repo.batchUpdatePositions(validUpdates);
+    }
   }
 }

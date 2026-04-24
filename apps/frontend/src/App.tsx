@@ -4,6 +4,7 @@ import { ProjectListPage } from './pages/ProjectListPage';
 import { EditorPage } from './pages/EditorPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { LandingPage } from './pages/LandingPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { ThemeProvider } from './components/ThemeProvider';
 import { useStore } from './store';
@@ -34,6 +35,7 @@ export function App() {
   return (
     <ThemeProvider>
       <Routes>
+        <Route path="/landing" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route

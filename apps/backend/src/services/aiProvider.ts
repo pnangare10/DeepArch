@@ -38,12 +38,15 @@ class OllamaProvider implements AIProvider {
       }),
     });
 
+    const responseText = await response.text();
+
     if (!response.ok) {
-      const text = await response.text().catch(() => "");
-      throw new Error(`Ollama request failed (${response.status}): ${text}`);
+      throw new Error(
+        `Ollama request failed (${response.status}): ${responseText}`,
+      );
     }
 
-    const data = (await response.json()) as { message?: { content?: string } };
+    const data = JSON.parse(responseText) as { message?: { content?: string } };
     return data.message?.content ?? "";
   }
 }
@@ -70,12 +73,14 @@ class OpenAIProvider implements AIProvider {
       }),
     });
 
+    const responseText = await response.text();
     if (!response.ok) {
-      const text = await response.text().catch(() => "");
-      throw new Error(`OpenAI request failed (${response.status}): ${text}`);
+      throw new Error(
+        `OpenAI request failed (${response.status}): ${responseText}`,
+      );
     }
 
-    const data = (await response.json()) as {
+    const data = JSON.parse(responseText) as {
       choices?: { message?: { content?: string } }[];
     };
     return data.choices?.[0]?.message?.content ?? "";
@@ -85,6 +90,7 @@ class OpenAIProvider implements AIProvider {
 // ── Factory ────────────────────────────────────────────────────────────────
 export function getAIProvider(): AIProvider {
   const provider = (process.env.AI_PROVIDER || "ollama").toLowerCase();
+  console.log(`Using AI provider: ${provider}`);
   switch (provider) {
     case "anthropic":
       return new AnthropicProvider();
