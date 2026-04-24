@@ -8,7 +8,7 @@ export type {
 } from './types/node.js';
 export type { ArchEdge, CreateEdgeDTO, UpdateEdgeDTO } from './types/edge.js';
 export type { BreadcrumbItem, SearchResult } from './types/search.js';
-export type { User, LoginDTO, RegisterDTO, AuthResponse } from './types/auth.js';
+export type { User, UserPreferences, LoginDTO, RegisterDTO, AuthResponse } from './types/auth.js';
 export type {
   ProjectRole,
   ProjectMember,

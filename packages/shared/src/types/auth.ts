@@ -1,3 +1,7 @@
+export interface UserPreferences {
+  themePreference?: 'light' | 'dark' | 'system';
+}
+
 export interface User {
   id: string;
   email: string;

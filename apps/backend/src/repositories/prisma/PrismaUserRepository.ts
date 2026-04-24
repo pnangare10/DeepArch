@@ -72,6 +72,7 @@ export class PrismaUserRepository implements IUserRepository {
       userId,
     );
     if (!rows.length) throw new Error('User not found');
-    return { themePreference: rows[0].themePreference ?? undefined };
+    const theme = rows[0].themePreference as 'light' | 'dark' | 'system' | undefined;
+    return { themePreference: theme ?? undefined };
   }
 }
