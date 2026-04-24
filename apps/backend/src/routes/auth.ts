@@ -25,4 +25,30 @@ router.post('/login', async (req, res, next) => {
   }
 });
 
+// POST /api/auth/forgot-password
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email?.trim()) {
+      res.status(400).json({ error: 'Email is required' });
+      return;
+    }
+    const result = await authService.forgotPassword(email);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/reset-password
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+    const result = await authService.resetPassword(token, newPassword);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

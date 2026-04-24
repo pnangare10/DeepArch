@@ -4,6 +4,7 @@ export class AppError extends Error {
   constructor(
     public statusCode: number,
     message: string,
+    public data?: Record<string, any>,
   ) {
     super(message);
     this.name = 'AppError';
@@ -17,7 +18,12 @@ export function errorHandler(
   _next: NextFunction,
 ) {
   if (err instanceof AppError) {
-    res.status(err.statusCode).json({ error: err.message });
+    const response: any = { error: err.message };
+    if (err.data?.retryAfter) {
+      res.set('Retry-After', err.data.retryAfter.toString());
+      response.retryAfter = err.data.retryAfter;
+    }
+    res.status(err.statusCode).json(response);
     return;
   }
 

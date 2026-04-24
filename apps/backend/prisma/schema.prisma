@@ -8,16 +8,20 @@ generator client {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  name      String
-  password  String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  projects  Project[]
-  members   ProjectMember[]
-  comments  Comment[]
-  themePreference String? @default("system")
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  name                String
+  password            String
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  projects            Project[]
+  members             ProjectMember[]
+  comments            Comment[]
+  themePreference     String?   @default("system")
+  resetTokenHash      String?
+  resetTokenExpiresAt DateTime?
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
 }
 
 model Project {

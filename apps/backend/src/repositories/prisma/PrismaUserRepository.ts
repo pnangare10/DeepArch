@@ -29,10 +29,11 @@ export class PrismaUserRepository implements IUserRepository {
   }
 
   // Returns the user AND password hash (needed by authService for verification)
-  async findByEmailWithPassword(email: string): Promise<(User & { password: string }) | null> {
+  async findByEmailWithPassword(email: string): Promise<(User & { password: string; failedLoginAttempts: number; lockedUntil: Date | null }) | null> {
     const rows = await prisma.$queryRawUnsafe<Array<{
       id: string; email: string; name: string; password: string;
       createdAt: string; updatedAt: string; themePreference: string | null;
+      failedLoginAttempts: number; lockedUntil: string | null;
     }>>(`SELECT * FROM User WHERE email = ?`, email);
     if (!rows.length) return null;
     const r = rows[0];
@@ -40,6 +41,8 @@ export class PrismaUserRepository implements IUserRepository {
       id: r.id, email: r.email, name: r.name, password: r.password,
       createdAt: r.createdAt, updatedAt: r.updatedAt,
       themePreference: r.themePreference ?? undefined,
+      failedLoginAttempts: r.failedLoginAttempts || 0,
+      lockedUntil: r.lockedUntil ? new Date(r.lockedUntil) : null,
     };
   }
 
@@ -74,5 +77,72 @@ export class PrismaUserRepository implements IUserRepository {
     if (!rows.length) throw new Error('User not found');
     const theme = rows[0].themePreference as 'light' | 'dark' | 'system' | undefined;
     return { themePreference: theme ?? undefined };
+  }
+
+  async setResetToken(userId: string, hash: string, expiresAt: Date): Promise<void> {
+    await prisma.$executeRawUnsafe(
+      `UPDATE "User" SET "resetTokenHash" = ?, "resetTokenExpiresAt" = ?, "updatedAt" = datetime('now') WHERE id = ?`,
+      hash,
+      expiresAt.toISOString(),
+      userId,
+    );
+  }
+
+  async findByResetTokenHash(hash: string): Promise<(User & { password: string; resetTokenHash: string; resetTokenExpiresAt: Date | null }) | null> {
+    const rows = await prisma.$queryRawUnsafe<Array<{
+      id: string; email: string; name: string; password: string;
+      createdAt: string; updatedAt: string; themePreference: string | null;
+      resetTokenHash: string | null; resetTokenExpiresAt: string | null;
+    }>>(`SELECT * FROM User WHERE "resetTokenHash" = ?`, hash);
+    if (!rows.length) return null;
+    const r = rows[0];
+    return {
+      id: r.id, email: r.email, name: r.name, password: r.password,
+      createdAt: r.createdAt, updatedAt: r.updatedAt,
+      themePreference: r.themePreference ?? undefined,
+      resetTokenHash: r.resetTokenHash || '',
+      resetTokenExpiresAt: r.resetTokenExpiresAt ? new Date(r.resetTokenExpiresAt) : null,
+    };
+  }
+
+  async clearResetToken(userId: string): Promise<void> {
+    await prisma.$executeRawUnsafe(
+      `UPDATE "User" SET "resetTokenHash" = NULL, "resetTokenExpiresAt" = NULL, "updatedAt" = datetime('now') WHERE id = ?`,
+      userId,
+    );
+  }
+
+  async recordFailedLogin(userId: string): Promise<{ lockedUntil: Date | null }> {
+    const newCount = await prisma.$queryRawUnsafe<Array<{ count: number }>>(
+      `SELECT COUNT(*) as count FROM User WHERE id = ?`,
+      userId,
+    );
+
+    let lockedUntil: Date | null = null;
+    const currentAttempts = await prisma.$queryRawUnsafe<Array<{ failedLoginAttempts: number }>>(
+      `SELECT "failedLoginAttempts" FROM User WHERE id = ?`,
+      userId,
+    );
+
+    const attempts = (currentAttempts[0]?.failedLoginAttempts ?? 0) + 1;
+    if (attempts >= 5) {
+      lockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 min lockout
+    }
+
+    await prisma.$executeRawUnsafe(
+      `UPDATE "User" SET "failedLoginAttempts" = ?, "lockedUntil" = ?, "updatedAt" = datetime('now') WHERE id = ?`,
+      attempts,
+      lockedUntil ? lockedUntil.toISOString() : null,
+      userId,
+    );
+
+    return { lockedUntil };
+  }
+
+  async resetFailedLogins(userId: string): Promise<void> {
+    await prisma.$executeRawUnsafe(
+      `UPDATE "User" SET "failedLoginAttempts" = 0, "lockedUntil" = NULL, "updatedAt" = datetime('now') WHERE id = ?`,
+      userId,
+    );
   }
 }
