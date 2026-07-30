@@ -90,7 +90,45 @@ Structurizr.
 | 7 | Multiple views/perspectives over one model | Ilograph-style: same components, different lenses (data flow vs deploy) | Backlog |
 | 8 | PNG/SVG/PDF image export | Needed for decks and wikis | Backlog |
 
-## 5. Positioning Summary
+## 5. Voice of the Practitioner — LinkedIn Discussions
+
+*LinkedIn blocks anonymous access to full comment threads, so this section is compiled from
+indexed post text, LinkedIn Pulse articles, and LinkedIn "collaborative articles"
+(linkedin.com/advice) — which are themselves aggregated practitioner contributions.*
+
+**What architects and engineering leaders post about:**
+
+1. **Communication, not drawing, is the problem.** The most-shared framing: "the biggest
+   challenge in software architecture isn't designing systems — it's communicating them."
+   A massive diagram with dozens of boxes loses every audience. The C4 "zoom" approach is the
+   most recommended fix (Milan Jovanović's C4 posts draw 50+ comment threads; IcePanel and
+   Simon Brown's content circulates constantly). **DeepArch's drill-down is exactly this** —
+   but freeform, not locked to C4's four levels.
+2. **Architectural drift is a recognized enterprise disease.** Multiple Pulse essays
+   ("Architectural Drift: Preventing System Decay", "Escaping Architectural Drift") describe
+   implementation diverging from documented architecture unnoticed. Proposed cures: make the
+   diagram part of the engineering loop (reviewable, diffable, versioned) and automate
+   generation from live sources. → Validates our **version history** (shipped) and the
+   planned **diff view** and **infrastructure import**.
+3. **Practitioners recommend standard notations + lightweight artifacts.** LinkedIn advice
+   contributors converge on: C4/UML/arc42 notation, consistent style guides, Markdown + ADRs
+   (architecture decision records) living in the repo, and documentation maintenance built
+   into the SDLC with version-control support. → Suggests a future **ADR attachment** per
+   node/level and **notation presets** (C4 mode) in DeepArch.
+4. **Audience-specific views.** The 4+1 / C4 threads stress different stakeholders needing
+   different views of the same model — execs see context, developers see components.
+   → Validates **presentation mode** (shipped) and role-based drill-in restrictions (shipped);
+   strengthens the case for the backlog "multiple perspectives" item.
+5. **The 2026 AI wave.** "I stopped drawing diagrams manually" posts trend; tools like
+   InfraSketch/Archyl generate diagrams from natural language or code. Common counterpoint in
+   discussions: AI output still needs an editable, reviewable home — raw generation without a
+   model behind it recreates the drift problem. → Our `feat/ai-architecture-generation` branch
+   plus versioning is the differentiated combination.
+6. **Tool fatigue with general-purpose editors.** Recurring complaints about Visio
+   (platform lock-in, learning curve) and about redrawing diagrams after every architecture
+   change — "tools punish you every time the architecture changes."
+
+## 6. Positioning Summary
 
 DeepArch should own the middle ground the market leaves open: **easier than
 diagrams-as-code, deeper than whiteboards** — an interactive, metadata-rich, infinitely
@@ -99,6 +137,9 @@ presentation) that visual tools historically lack.
 
 ### Sources
 
+- LinkedIn: [Milan Jovanović — How do you draw architectural diagrams?](https://www.linkedin.com/posts/milan-jovanovic_how-do-you-draw-architectural-diagrams-activity-7411670369276825600-3xQZ), [Milan Jovanović — C4 for architecture diagrams](https://www.linkedin.com/posts/milan-jovanovic_how-can-you-visualize-your-software-architecture-activity-7124024552308793344-jkaM), [IcePanel — What is the C4 model?](https://www.linkedin.com/posts/icepanel_what-is-the-c4-model-activity-7049739843295199232-7BI_), [Randhir Thakur — Top 7 diagrams-as-code tools](https://www.linkedin.com/posts/randhir-thakur-6a4145121_top-7-diagrams-as-code-tools-for-software-activity-7048316030820974592-dveN), [Mac Goswami — Top 3 system design collaboration tools](https://www.linkedin.com/posts/macgos_systemdesign-technicaldiagrams-aiintech-activity-7335733286385704961-INf2)
+- LinkedIn Pulse: [Architectural Drift: Preventing System Decay](https://www.linkedin.com/pulse/architectural-drift-preventing-system-decay-bogdan-sapovskyi-gsmxe), [Escaping Architectural Drift](https://www.linkedin.com/pulse/escaping-architectural-drift-david-tyler), [Modern Practices for Documenting Architectures](https://www.linkedin.com/pulse/modern-practices-documenting-architectures-navdeep-singh), [Architecture Documentation in an Agile world](https://www.linkedin.com/pulse/my-thoughts-architecture-documentation-agile-world-andrew-missen), [Automating EA Visualizations](https://www.linkedin.com/pulse/automating-enterprise-architecture-visualizations-rajshree-surwade-0cmzf)
+- LinkedIn collaborative articles: [Methods for documenting software architecture](https://www.linkedin.com/advice/0/what-most-common-methods-documenting-software-nsrqe), [Documenting architecture in agile development](https://www.linkedin.com/advice/1/what-effective-strategies-documenting-software), [Visualizing software architecture best practices](https://www.linkedin.com/advice/0/what-best-practices-visualizing-software-architecture-39fje), [Maintainable architecture documentation](https://www.linkedin.com/advice/1/how-can-you-write-software-architecture-documentation-ipgtf)
 - [IcePanel vs Structurizr](https://icepanel.io/blog/2025-11-14-icepanel-vs-structurizr), [IcePanel vs LucidChart](https://icepanel.io/blog/2024-11-21-IcePanel-vs-LucidChart), [LucidChart alternatives](https://icepanel.io/blog/2025-03-12-the-best-alternatives-to-lucidchart-for-software-architecture-diagrams)
 - [Pros and cons of diagram-as-code](https://icepanel.io/blog/2025-02-05-the-pros-and-cons-of-diagram-as-code-for-software-architecture)
 - [Architecture Diagrams as Code (Medium)](https://medium.com/towards-data-engineering/architecture-diagrams-as-code-43187fe787bc), [Diagrams as Code intro (daily.dev)](https://daily.dev/blog/diagrams-as-code-intro-for-developers/), [Docs-as-code diagram workflow (Docsie)](https://www.docsie.io/blog/articles/technical-diagrams-docs-as-code-2026/)
