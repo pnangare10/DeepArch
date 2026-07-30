@@ -19,6 +19,7 @@ export type {
   UpdateCommentDTO,
   CursorEvent,
 } from './types/collaboration.js';
+export type { ProjectVersion, CreateVersionDTO } from './types/version.js';
 export {
   PROJECT_ROLES,
   ASSIGNABLE_ROLES,

@@ -104,6 +104,12 @@ export const createCollaborationSlice: StateCreator<
       set({ incomingCommentDelete: commentId });
     });
 
+    // Another member restored a version — the whole tree changed, reload from root
+    socket.on('project:restored', () => {
+      get().resetNavigation();
+      get().loadLevel(projectId, null);
+    });
+
     socket.on('disconnect', () => {
       set({ onlineUsers: [], cursors: {} });
     });

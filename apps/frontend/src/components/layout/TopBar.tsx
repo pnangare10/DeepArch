@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layers, ArrowLeft, Save, Check, Loader2, AlertCircle, Download, Users } from 'lucide-react';
+import { Layers, ArrowLeft, Save, Check, Loader2, AlertCircle, Download, Users, History } from 'lucide-react';
 import { BreadcrumbNav } from '../navigation/BreadcrumbNav';
 import { SearchBar } from '../navigation/SearchBar';
 import { MemberBadges } from '../project/MemberBadges';
 import { ShareModal } from '../project/ShareModal';
+import { VersionHistoryModal } from '../project/VersionHistoryModal';
 import { useStore } from '../../store';
 import { projectsApi } from '../../api/projects';
 
@@ -18,6 +19,7 @@ export function TopBar({ projectId, projectName, onSave }: TopBarProps) {
   const navigate = useNavigate();
   const saveStatus = useStore((s) => s.saveStatus);
   const [shareOpen, setShareOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const handleExport = () => {
     projectsApi.exportProject(projectId, projectName).catch(console.error);
@@ -87,6 +89,16 @@ export function TopBar({ projectId, projectName, onSave }: TopBarProps) {
         <span className="hidden sm:inline">Share</span>
       </button>
 
+      {/* Version history button */}
+      <button
+        onClick={() => setHistoryOpen(true)}
+        title="Version history"
+        className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-slate-200 text-slate-500 hover:text-slate-800 transition-colors flex-shrink-0"
+      >
+        <History className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline">History</span>
+      </button>
+
       {/* Export button */}
       <button
         onClick={handleExport}
@@ -111,6 +123,10 @@ export function TopBar({ projectId, projectName, onSave }: TopBarProps) {
 
     {shareOpen && (
       <ShareModal projectId={projectId} onClose={() => setShareOpen(false)} />
+    )}
+
+    {historyOpen && (
+      <VersionHistoryModal projectId={projectId} onClose={() => setHistoryOpen(false)} />
     )}
   </>
   );

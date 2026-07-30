@@ -9,6 +9,7 @@ import { searchRoutes } from './routes/search.js';
 import authRoutes from './routes/auth.js';
 import membersRouter from './routes/members.js';
 import commentsRouter from './routes/comments.js';
+import versionsRouter from './routes/versions.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { initSocket, setIo } from './socket/index.js';
 
@@ -25,6 +26,7 @@ app.use('/api/projects', nodeRoutes);
 app.use('/api/projects', edgeRoutes);
 app.use('/api/projects', searchRoutes);
 app.use('/api/projects/:projectId/members', membersRouter);
+app.use('/api/projects/:projectId/versions', versionsRouter);
 app.use('/api/projects/:projectId', commentsRouter);
 
 // Health check
