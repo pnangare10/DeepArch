@@ -51,6 +51,7 @@ function CanvasInner({ projectId }: CanvasProps) {
   const cutNode = useStore((s) => s.cutNode);
   const pasteNodes = useStore((s) => s.pasteNodes);
   const emitCursorMove = useStore((s) => s.emitCursorMove);
+  const presentationMode = useStore((s) => s.presentationMode);
 
   const { screenToFlowPosition } = useReactFlow();
   const { guides, onNodeDrag, onNodeDragStop, applySnapRef } =
@@ -116,6 +117,7 @@ function CanvasInner({ projectId }: CanvasProps) {
       if (inInput) return;
 
       const state = useStore.getState();
+      const presenting = state.presentationMode;
       const realNodes = state.nodes.filter((n) => !n.id.startsWith("__port__"));
       const selectedNode = realNodes.find((n) => n.selected);
 
@@ -146,7 +148,7 @@ function CanvasInner({ projectId }: CanvasProps) {
       if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
         e.preventDefault();
 
-        if (e.shiftKey && selectedNode) {
+        if (e.shiftKey && selectedNode && !presenting) {
           // Move the selected node
           const dx =
             e.key === "ArrowLeft"
@@ -211,6 +213,9 @@ function CanvasInner({ projectId }: CanvasProps) {
         }
         return;
       }
+
+      // Editing shortcuts are disabled while presenting
+      if (presenting) return;
 
       // Ctrl+Z undo
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
@@ -312,6 +317,7 @@ function CanvasInner({ projectId }: CanvasProps) {
   const onNodeContextMenu: NodeMouseHandler = useCallback(
     (event, node) => {
       event.preventDefault();
+      if (useStore.getState().presentationMode) return;
       // Port nodes are virtual — suppress context menu
       if (node.id.startsWith("__port__")) return;
       setContextMenu({
@@ -328,6 +334,7 @@ function CanvasInner({ projectId }: CanvasProps) {
   const onEdgeContextMenu: EdgeMouseHandler = useCallback(
     (event, edge) => {
       event.preventDefault();
+      if (useStore.getState().presentationMode) return;
       setContextMenu({
         type: "edge",
         id: edge.id,
@@ -342,6 +349,7 @@ function CanvasInner({ projectId }: CanvasProps) {
   const onPaneContextMenu = useCallback(
     (event: MouseEvent | React.MouseEvent) => {
       event.preventDefault();
+      if (useStore.getState().presentationMode) return;
       const flowPos = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
@@ -411,7 +419,9 @@ function CanvasInner({ projectId }: CanvasProps) {
         edgeTypes={edgeTypes}
         fitView
         fitViewOptions={{ padding: 0.2 }}
-        deleteKeyCode="Delete"
+        nodesDraggable={!presentationMode}
+        nodesConnectable={!presentationMode}
+        deleteKeyCode={presentationMode ? null : "Delete"}
         multiSelectionKeyCode="Shift"
         selectionOnDrag
         selectionMode={SelectionMode.Partial}
@@ -446,7 +456,7 @@ function CanvasInner({ projectId }: CanvasProps) {
           }}
           className="!rounded-lg !border !border-slate-200"
         />
-        <CanvasToolbar />
+        {!presentationMode && <CanvasToolbar />}
         <RemoteCursors />
       </ReactFlow>
 
@@ -454,9 +464,11 @@ function CanvasInner({ projectId }: CanvasProps) {
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="text-center text-slate-400">
             <p className="text-lg font-medium mb-1">Empty level</p>
-            <p className="text-sm">
-              Right-click to add a node, or use the + button
-            </p>
+            {!presentationMode && (
+              <p className="text-sm">
+                Right-click to add a node, or use the + button
+              </p>
+            )}
           </div>
         </div>
       )}

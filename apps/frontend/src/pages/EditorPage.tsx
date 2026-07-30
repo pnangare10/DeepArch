@@ -4,6 +4,7 @@ import { ReactFlowProvider } from '@xyflow/react';
 import { projectsApi } from '../api/projects';
 import { useStore } from '../store';
 import { TopBar } from '../components/layout/TopBar';
+import { PresentationBar } from '../components/layout/PresentationBar';
 import { Canvas } from '../components/canvas/Canvas';
 import { DetailPanel } from '../components/layout/DetailPanel';
 import { useAutoSave } from '../hooks/useAutoSave';
@@ -32,13 +33,18 @@ function EditorInner({ project }: { project: Project }) {
   }, [project.id]);
 
   const { triggerSave } = useAutoSave(project.id);
+  const presentationMode = useStore((s) => s.presentationMode);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      <TopBar projectId={project.id} projectName={project.name} onSave={triggerSave} />
+      {presentationMode ? (
+        <PresentationBar projectName={project.name} />
+      ) : (
+        <TopBar projectId={project.id} projectName={project.name} onSave={triggerSave} />
+      )}
       <div className="flex flex-1 overflow-hidden">
         <Canvas projectId={project.id} />
-        <DetailPanel />
+        {!presentationMode && <DetailPanel />}
       </div>
     </div>
   );

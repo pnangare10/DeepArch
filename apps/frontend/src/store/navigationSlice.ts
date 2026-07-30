@@ -21,8 +21,10 @@ export interface NavigationSlice {
   currentParentId: string | null;
   breadcrumbs: BreadcrumbItem[];
   entryExitConnections: EntryExitConnection[];
+  presentationMode: boolean;
   setProjectId: (id: string) => void;
   setProjectRole: (role: string | null) => void;
+  setPresentationMode: (on: boolean) => void;
   navigateInto: (nodeId: string, nodeName: string) => Promise<void>;
   navigateToLevel: (index: number) => void;
   navigateUp: () => void;
@@ -51,9 +53,16 @@ export const createNavigationSlice: StateCreator<
   currentParentId: null,
   breadcrumbs: [{ id: null, name: 'Root' }],
   entryExitConnections: [],
+  presentationMode: false,
 
   setProjectId: (id) => set({ projectId: id }),
   setProjectRole: (role) => set({ projectRole: role }),
+  setPresentationMode: (on) => {
+    // Leave no editing UI dangling when switching modes
+    get().closeDetail();
+    get().setContextMenu(null);
+    set({ presentationMode: on });
+  },
 
   navigateInto: async (nodeId, nodeName) => {
     const { breadcrumbs, projectId, edges, nodes } = get();

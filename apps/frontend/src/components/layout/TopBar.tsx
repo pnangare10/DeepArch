@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layers, ArrowLeft, Save, Check, Loader2, AlertCircle, Download, Users, History } from 'lucide-react';
+import { Layers, ArrowLeft, Save, Check, Loader2, AlertCircle, Download, Users, History, Play } from 'lucide-react';
 import { BreadcrumbNav } from '../navigation/BreadcrumbNav';
 import { SearchBar } from '../navigation/SearchBar';
 import { MemberBadges } from '../project/MemberBadges';
@@ -18,6 +18,7 @@ interface TopBarProps {
 export function TopBar({ projectId, projectName, onSave }: TopBarProps) {
   const navigate = useNavigate();
   const saveStatus = useStore((s) => s.saveStatus);
+  const setPresentationMode = useStore((s) => s.setPresentationMode);
   const [shareOpen, setShareOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -87,6 +88,16 @@ export function TopBar({ projectId, projectName, onSave }: TopBarProps) {
       >
         <Users className="w-3.5 h-3.5" />
         <span className="hidden sm:inline">Share</span>
+      </button>
+
+      {/* Present button */}
+      <button
+        onClick={() => setPresentationMode(true)}
+        title="Presentation mode — read-only walkthrough (Esc to exit)"
+        className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-slate-200 text-slate-500 hover:text-slate-800 transition-colors flex-shrink-0"
+      >
+        <Play className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline">Present</span>
       </button>
 
       {/* Version history button */}

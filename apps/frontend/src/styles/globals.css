@@ -45,3 +45,14 @@
 .react-flow__attribution {
   display: none;
 }
+
+/* Breadcrumb colors on the dark presentation bar */
+.presentation-breadcrumbs .text-slate-800 {
+  color: #f8fafc;
+}
+.presentation-breadcrumbs .text-blue-600 {
+  color: #93c5fd;
+}
+.presentation-breadcrumbs .text-blue-600:hover {
+  color: #bfdbfe;
+}
